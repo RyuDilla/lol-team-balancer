@@ -15,7 +15,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Yu 
 .wrap{max-width:1380px;margin:0 auto;padding:24px 16px 80px}
 h1{font-size:22px;margin:0 0 4px;letter-spacing:.04em}
 h1 span{color:var(--accent)}
-.lead{color:var(--muted);margin:0 0 20px;font-size:13px}
+.lead{color:#b9c3d6;margin:0;font-size:13px}
+.hero{position:relative;border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid var(--line);background:#0b111c center 18%/cover no-repeat;min-height:170px;display:flex;align-items:flex-end}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(14,20,32,.96) 0%,rgba(14,20,32,.78) 42%,rgba(14,20,32,.12) 100%),linear-gradient(0deg,rgba(14,20,32,.7),rgba(14,20,32,0) 60%)}
+.heroin{position:relative;padding:22px 24px}
+.legal{color:#5f6c85;font-size:11px;line-height:1.6;margin-top:28px}
+img.crest{width:34px;height:27px;object-fit:contain;vertical-align:middle;flex:none}
+img.crest.s{width:26px;height:20px}
+img.lane{width:18px;height:18px;vertical-align:-4px;margin-right:4px;opacity:.95}
+img.champ{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);flex:none;object-fit:cover}
+td.name .nm{display:flex;gap:10px;align-items:flex-start}
+.rankcell{display:flex;align-items:center;gap:6px;justify-content:center}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
 .panel h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .panel h2 .num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#1a1405;font-size:12px;align-items:center;justify-content:center;font-weight:700}
@@ -62,12 +72,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .teams .head.b{background:rgba(239,90,90,.16);color:#f6b0b0;flex-direction:row-reverse}
 .teams .head small{font-weight:400;font-size:12px;color:var(--muted)}
 .teams .mid{background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.05em}
-.teams .cell{padding:9px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.teams .cell{min-height:58px;background:var(--panel) center 22%/cover no-repeat;padding:9px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .teams .cell.b{flex-direction:row-reverse;text-align:right}
-.teams .cell .pn{font-weight:600}
-.teams .cell .pr{font-size:12px;color:var(--muted);white-space:nowrap}
+.teams .cell .pn{font-weight:700;font-size:15px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.teams .cell .pr{display:flex;align-items:center;gap:6px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.teams .cell.b .pr{flex-direction:row-reverse}
+.teams .cell .pr{font-size:12px;color:#c5cede;white-space:nowrap}
 .teams .cell .off{color:var(--warn)}
 .teams .mid.lane{border-top:1px solid var(--line);flex-direction:column;line-height:1.3;padding:4px 0}
+.teams .mid.lane img{width:22px;height:22px;margin:0 0 1px}
 .teams .mid.lane .d{font-weight:400;font-size:10px}
 .d.a{color:var(--blue)} .d.b{color:var(--red)}
 .summary{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:13px}
@@ -84,7 +97,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 @media(max-width:700px){.slots{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
 .slot{position:relative;display:flex;align-items:center;gap:8px;background:#0b111c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:44px}
 .slot:focus-within{border-color:var(--accent)}
-.slot.filled{background:var(--panel2);border-color:#3a4a68}
+.slot.filled{background:var(--panel2) right 22%/62% auto no-repeat;border-color:#3a4a68}
 .slot .no{color:var(--muted);font-size:12px;width:18px;text-align:center;flex:none}
 .slot input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none;font-family:inherit}
 .slot .who{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -99,8 +112,10 @@ a{color:var(--accent2)}
 </head>
 <body>
 <div class="wrap">
-  <h1>LoLカスタム <span>チーム分け</span></h1>
-  <p class="lead">DeepLoLの戦績から「ランク」と「ロールごとの実力」を出して、誰がどのレーンに行くかまで含めて10人を2チームに分けます。</p>
+  <header class="hero" id="hero"><div class="heroin">
+    <h1>LoLカスタム <span>チーム分け</span></h1>
+    <p class="lead">DeepLoLの戦績から「ランク」と「ロールごとの実力」を出して、誰がどのレーンに行くかまで含めて10人を2チームに分けます。</p>
+  </div></header>
 
   <div class="panel">
     <h2><span class="num">1</span>参加者を入れる</h2>
@@ -166,8 +181,13 @@ a{color:var(--accent2)}
     </div>
     <div id="result"></div>
   </div>
+  <footer class="legal">
+    戦績データ：DeepLoL ／ 画像：Riot Games（Data Dragon・CommunityDragon 経由）<br>
+    This site isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+  </footer>
 </div>
 
+<script src="assets.js"></script>
 <script>
 "use strict";
 const API = "https://b2c-api-cdn.deeplol.gg";
@@ -278,10 +298,10 @@ async function fetchPlayer(name, tag, platform){
     const st = rt.season_tier_info_dict || {};
     const solo = st.ranked_solo_5x5 || {}, flex = st.ranked_flex_sr || {};
     let r = tierToRating(solo.tier, solo.division, solo.league_points);
-    if(r != null){ p.base = r; p.baseSrc = "solo"; }
+    if(r != null){ p.base = r; p.baseSrc = "solo"; p.apex = APEX[String(solo.tier).toUpperCase()] ? String(solo.tier).toUpperCase() : null; }
     else{
       r = tierToRating(flex.tier, flex.division, flex.league_points);
-      if(r != null){ p.base = r; p.baseSrc = "flex"; }
+      if(r != null){ p.base = r; p.baseSrc = "flex"; p.apex = APEX[String(flex.tier).toUpperCase()] ? String(flex.tier).toUpperCase() : null; }
     }
   }catch(e){}
   if(p.base == null){
@@ -310,6 +330,13 @@ async function fetchPlayer(name, tag, platform){
         const pr = tot.position_rate && tot.position_rate[r];
         if(pr && !p.roles[r].g && pr.games){ p.roles[r] = {g:pr.games, w:pr.wins, wr:pr.win_rate, ai:0}; }
       }
+      // 各ロールで一番使っているチャンピオン（画像の飾り用）
+      const most = lane => {
+        const list = (tot.enemy_champion_stats[lane] || []).filter(x => x.champion_id);
+        return list.length ? list.reduce((m, x) => x.games > m.games ? x : m).champion_id : 0;
+      };
+      p.champs = {All: most("All")};
+      ROLES.forEach(r => p.champs[r] = most(r));
       if(!ROLES.some(r => p.roles[r].g > 0)) p.roles = null;
     }
   }catch(e){}
@@ -479,6 +506,54 @@ function solveCore(players, settings, strict){
 
 /* ---------- 表示 ---------- */
 const $ = id => document.getElementById(id);
+
+/* ---------- 画像素材（レーン・ランク紋章・チャンピオン） ---------- */
+const ASSETS = window.LOL_ASSETS || {pos:{}, crest:{}};
+const DD = "https://ddragon.leagueoflegends.com";
+const DEFAULT_HERO = "Elise";
+let CH = {ver:null, map:{}};          // チャンピオン番号 → 画像用の名前
+function laneImg(role){ return ASSETS.pos[role] ? `<img class="lane" src="${ASSETS.pos[role]}" alt="">` : ""; }
+function crestKey(p, r){
+  if(r == null || !isFinite(r)) return null;
+  if(r >= 2800){
+    if(p && p.baseOverride != null) return p.baseOverride >= 3800 ? "challenger" : p.baseOverride >= 3300 ? "grandmaster" : "master";
+    const t = p && p.apex ? String(p.apex).toLowerCase() : "master";
+    return ASSETS.crest[t] ? t : "master";
+  }
+  return TIERS[Math.max(0, Math.floor(r/400))].toLowerCase();
+}
+function crestImg(p, r, small){
+  const k = crestKey(p, r), src = k && ASSETS.crest[k];
+  return src ? `<img class="crest ${small?"s":""}" src="${src}" alt="">` : "";
+}
+function champName(cid){ return (cid && CH.map[cid]) || null; }
+function splashUrl(cid){ const n = champName(cid); return n ? `${DD}/cdn/img/champion/splash/${n}_0.jpg` : null; }
+function squareUrl(cid){ const n = champName(cid); return n && CH.ver ? `${DD}/cdn/${CH.ver}/img/champion/${n}.png` : null; }
+function topChamp(p, role){ const c = (p && p.champs) || {}; return (role && c[role]) || c.All || 0; }
+function splashBg(cid, dir, strong){
+  const u = splashUrl(cid); if(!u) return "";
+  const a = strong ? ".35" : ".6", b = ".94";
+  return `background-image:linear-gradient(${dir}, rgba(22,30,46,${a}) 0%, rgba(22,30,46,${b}) 68%), url('${u}')`;
+}
+function renderHero(){
+  const first = slotPlayers().find(p => topChamp(p));
+  const name = (first && champName(topChamp(first))) || DEFAULT_HERO;
+  $("hero").style.backgroundImage = `url('${DD}/cdn/img/champion/splash/${name}_0.jpg')`;
+}
+async function loadChampions(){
+  try{ const c = JSON.parse(localStorage.getItem("lolTeamBalancer.champs") || "null"); if(c && c.ver && c.map) CH = c; }catch(e){}
+  try{
+    const vers = await (await fetch(DD + "/api/versions.json")).json();
+    if(vers[0] && vers[0] !== CH.ver){
+      const d = await (await fetch(`${DD}/cdn/${vers[0]}/data/en_US/champion.json`)).json();
+      const map = {};
+      Object.values(d.data).forEach(c => map[c.key] = c.id);
+      CH = {ver:vers[0], map};
+      try{ localStorage.setItem("lolTeamBalancer.champs", JSON.stringify(CH)); }catch(e){}
+    }
+  }catch(e){}
+  renderHero(); renderSlots(); renderRoster(); renderResult();
+}
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 const SRC_JA = {solo:"ソロ", flex:"フレックス", prev:"前期", normal:"ノーマル平均"};
@@ -546,7 +621,7 @@ function renderRoster(){
     t.innerHTML = `<tr><td class="empty">まだ誰もいません。上の枠にメンバーを入れてください。</td></tr>`;
     return;
   }
-  let h = `<tr><th>枠</th><th style="text-align:left">プレイヤー</th><th>基準ランク</th><th>メイン／サブ</th>${ROLES.map(r=>`<th>${ROLE_JA[r]}</th>`).join("")}<th></th></tr>`;
+  let h = `<tr><th>枠</th><th style="text-align:left">プレイヤー</th><th>基準ランク</th><th>メイン／サブ</th>${ROLES.map(r=>`<th>${laneImg(r)}${ROLE_JA[r]}</th>`).join("")}<th></th></tr>`;
   state.slots.forEach((sid, si) => {
     const i = sid ? state.players.findIndex(x => x.id === sid) : -1;
     if(i < 0) return;
@@ -562,8 +637,9 @@ function renderRoster(){
     }
     h += `<tr>
       <td style="color:var(--muted)">${si+1}</td>
-      <td class="name"><div class="n">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></div>${notes.join("")}</td>
-      <td><select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></td>
+      <td class="name"><div class="nm">${squareUrl(topChamp(p)) ? `<img class="champ" src="${squareUrl(topChamp(p))}" alt="" loading="lazy">` : ""}
+        <div><div class="n">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></div>${notes.join("")}</div></div></td>
+      <td><div class="rankcell">${crestImg(p, B)}<select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></div></td>
       <td style="white-space:nowrap;text-align:left"><div><span class="hint">メイン</span> ${roleSelect(p, i, "main")}</div>
         <div style="margin-top:3px"><span class="hint">サブ　</span> ${roleSelect(p, i, "sub")}</div>
         <div style="margin-top:3px"><span class="hint">強さ　</span> ${subLevelSelect(p, i)}</div></td>`;
@@ -605,12 +681,18 @@ function renderSlots(){
 function renderSlot(i){
   const el = $("slot"+i), id = state.slots[i], p = id && state.players.find(x => x.id === id);
   el.className = "slot" + (p ? " filled" : "");
+  el.style.backgroundImage = "";
   const no = `<span class="no">${i+1}</span>`;
   if(slotBusy[i]) el.innerHTML = no + `<span class="who" style="color:var(--muted);font-weight:400">${esc(slotBusy[i])} を取得中…</span>`;
-  else if(p) el.innerHTML = no + `<span class="who">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></span>
-    <span class="rk">${p.error ? "データなし" : esc(ratingLabel(baseOf(p)))}</span>
+  else if(p){
+    const u = splashUrl(topChamp(p));
+    if(u) el.style.backgroundImage = `linear-gradient(90deg, rgba(28,38,57,1) 40%, rgba(28,38,57,.55) 100%), url('${u}')`;
+    el.innerHTML = no + `<span class="who">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></span>
+    ${p.error ? "" : crestImg(p, baseOf(p), true)}<span class="rk">${p.error ? "データなし" : esc(ratingLabel(baseOf(p)))}</span>
     <button class="mini" data-clear="${i}" title="この枠を空ける">×</button>`;
+  }
   else el.innerHTML = no + `<input data-slot="${i}" placeholder="名前で検索（または 名前#タグ）" autocomplete="off" spellcheck="false"><div class="dd" hidden></div>`;
+  renderHero();
 }
 let ddItems = [], ddSel = -1, ddSlot = -1, ddTimer = null, ddSeq = 0;
 function ddEl(i){ const s = $("slot"+i); return s ? s.querySelector(".dd") : null; }
@@ -760,9 +842,10 @@ function renderResult(){
   const {A, B, sumA, sumB, s} = currentTeams();
   const cell = (x, side) => {
     const off = x.best - x.r >= 150;
-    return `<div class="cell ${side}"><span class="pn">${esc(x.p.name)}</span>
-      <span class="pr ${off?"off":""}">${ratingLabel(x.r, true)}（${x.r}）${off?" 不慣れ":""}</span></div>`;
+    return `<div class="cell ${side}" style="${splashBg(topChamp(x.p, ROLES[x.k]), side === "a" ? "90deg" : "270deg", true)}"><span class="pn">${esc(x.p.name)}</span>
+      <span class="pr ${off?"off":""}">${crestImg(x.p, x.r, true)}<span>${ratingLabel(x.r, true)}（${x.r}）${off?" 不慣れ":""}</span></span></div>`;
   };
+  A.forEach((x, k) => x.k = k); B.forEach((x, k) => x.k = k);
   let h = `<div class="teams">
     <div class="head a"><span>チームA</span><small>合計 ${sumA.toLocaleString()}（平均 ${ratingLabel(sumA/5)}）</small></div>
     <div class="mid">VS</div>
@@ -770,7 +853,7 @@ function renderResult(){
   for(let k=0;k<5;k++){
     const d = A[k].r - B[k].r;
     const dtxt = d === 0 ? "互角" : (d > 0 ? "◀ +" + d : "+" + (-d) + " ▶");
-    h += cell(A[k], "a") + `<div class="mid lane">${ROLE_JA[ROLES[k]]}<span class="d ${d>0?"a":d<0?"b":""}">${dtxt}</span></div>` + cell(B[k], "b");
+    h += cell(A[k], "a") + `<div class="mid lane">${ASSETS.pos[ROLES[k]] ? `<img src="${ASSETS.pos[ROLES[k]]}" alt="">` : ""}${ROLE_JA[ROLES[k]]}<span class="d ${d>0?"a":d<0?"b":""}">${dtxt}</span></div>` + cell(B[k], "b");
   }
   h += `</div><div class="summary">
     <span>配置：<b>${modeLabel()}</b></span>
@@ -905,15 +988,34 @@ function flash(id, msg){
   setTimeout(() => b.textContent = orig, 2000);
 }
 /* 結果を1枚の画像（PNG）に描く */
-function resultCanvas(){
+function loadImg(url){
+  return new Promise(res => {
+    if(!url) return res(null);
+    const im = new Image();
+    if(!/^data:/.test(url)) im.crossOrigin = "anonymous";
+    const t = setTimeout(() => res(null), 5000);
+    im.onload = () => { clearTimeout(t); res(im); };
+    im.onerror = () => { clearTimeout(t); res(null); };
+    im.src = url;
+  });
+}
+async function resultCanvas(){
   const {A, B, sumA, sumB, s} = currentTeams();
-  const W = 1000, pad = 24, titleH = 48, headH = 52, rowH = 54, footH = 46, midW = 96;
+  const W = 1000, pad = 24, titleH = 48, headH = 52, rowH = 64, footH = 46, midW = 96;
   const H = pad + titleH + headH + rowH*5 + footH + pad;
   const sc = 2, c = document.createElement("canvas");
   c.width = W*sc; c.height = H*sc;
   const g = c.getContext("2d"); g.scale(sc, sc);
   const F = '"Segoe UI","Yu Gothic UI","Meiryo",sans-serif';
   const colW = (W - pad*2 - midW)/2, x0 = pad, x1 = x0 + colW, x2 = x1 + midW, x3 = W - pad;
+  // 先に画像を読み込む（読めなかったものは飾りなしで描く）
+  const [laneIms, crA, crB, spA, spB] = await Promise.all([
+    Promise.all(ROLES.map(r => loadImg(ASSETS.pos[r]))),
+    Promise.all(A.map(x => loadImg(ASSETS.crest[crestKey(x.p, x.r)]))),
+    Promise.all(B.map(x => loadImg(ASSETS.crest[crestKey(x.p, x.r)]))),
+    Promise.all(A.map((x, k) => loadImg(splashUrl(topChamp(x.p, ROLES[k]))))),
+    Promise.all(B.map((x, k) => loadImg(splashUrl(topChamp(x.p, ROLES[k])))))
+  ]);
   const text = (t, x, y, font, color, align) => { g.font = font; g.fillStyle = color; g.textAlign = align || "left"; g.fillText(t, x, y); };
   const fit = (t, font, max) => {
     g.font = font;
@@ -921,12 +1023,22 @@ function resultCanvas(){
     while(t.length > 1 && g.measureText(t + "…").width > max) t = t.slice(0, -1);
     return t + "…";
   };
+  // セルいっぱいにスプラッシュを敷き、文字が読めるように片側を暗くする
+  const splash = (im, x, y, w, h, toRight) => {
+    if(!im) return;
+    const scale = Math.max(w/im.width, h/im.height), sw = w/scale, sh = h/scale;
+    g.drawImage(im, (im.width - sw)/2, (im.height - sh)*0.22, sw, sh, x, y, w, h);
+    const gr = g.createLinearGradient(toRight ? x : x + w, 0, toRight ? x + w : x, 0);
+    gr.addColorStop(0, "rgba(22,30,46,.35)"); gr.addColorStop(0.68, "rgba(22,30,46,.94)"); gr.addColorStop(1, "rgba(22,30,46,.94)");
+    g.fillStyle = gr; g.fillRect(x, y, w, h);
+  };
   g.fillStyle = "#0e1420"; g.fillRect(0, 0, W, H);
   g.textBaseline = "middle";
   // タイトル
   const ty = pad + titleH/2 - 6, tf = `700 22px ${F}`;
   text("LoLカスタム ", x0, ty, tf, "#e6ebf5");
   text("チーム分け", x0 + g.measureText("LoLカスタム ").width, ty, tf, "#c8a45a");
+  text(`配置：${modeLabel()}`, x3, ty, `400 13px ${F}`, "#8c99b3", "right");
   // チーム見出し
   let y = pad + titleH;
   g.fillStyle = "#1b2b47"; g.fillRect(x0, y, colW, headH);
@@ -940,44 +1052,55 @@ function resultCanvas(){
   text(`合計 ${sumB.toLocaleString()}（平均 ${ratingLabel(sumB/5)}）`, x2+16, hy, sf, "#8c99b3");
   y += headH;
   // 各レーン
-  const nf = `600 17px ${F}`, rf = `400 13px ${F}`;
+  const nf = `700 17px ${F}`, rf = `400 13px ${F}`, cw = 30, chh = 24;
   for(let k = 0; k < 5; k++){
     g.fillStyle = "#161e2e"; g.fillRect(x0, y, W - pad*2, rowH);
+    splash(spA[k], x0, y, colW, rowH, true);
+    splash(spB[k], x2, y, colW, rowH, false);
     g.fillStyle = "#1c2639"; g.fillRect(x1, y, midW, rowH);
     g.fillStyle = "#2a364d"; g.fillRect(x0, y, W - pad*2, 1);
     const cy = y + rowH/2, a = A[k], b = B[k];
     const rt = x => `${ratingLabel(x.r, true)}（${x.r}）` + (x.best - x.r >= 150 ? " 不慣れ" : "");
-    const rc = x => x.best - x.r >= 150 ? "#e0a13a" : "#8c99b3";
-    text(fit(a.p.name, nf, colW - 200), x0+16, cy, nf, "#e6ebf5");
+    const rc = x => x.best - x.r >= 150 ? "#e0a13a" : "#c5cede";
+    g.shadowColor = "rgba(0,0,0,.9)"; g.shadowBlur = 4;
+    text(fit(a.p.name, nf, colW - 240), x0+16, cy, nf, "#ffffff");
     text(rt(a), x1-16, cy, rf, rc(a), "right");
-    text(fit(b.p.name, nf, colW - 200), x3-16, cy, nf, "#e6ebf5", "right");
-    text(rt(b), x2+16, cy, rf, rc(b));
+    const aw = g.measureText(rt(a)).width;
+    text(fit(b.p.name, nf, colW - 240), x3-16, cy, nf, "#ffffff", "right");
+    text(rt(b), x2+16+cw+6, cy, rf, rc(b));
+    g.shadowBlur = 0;
+    if(crA[k]) g.drawImage(crA[k], x1-16-aw-6-cw, cy - chh/2, cw, chh);
+    if(crB[k]) g.drawImage(crB[k], x2+16, cy - chh/2, cw, chh);
     const d = a.r - b.r;
-    text(ROLE_JA[ROLES[k]], x1 + midW/2, cy - 8, `700 13px ${F}`, "#c5cede", "center");
-    text(d === 0 ? "互角" : (d > 0 ? "◀ +" + d : "+" + (-d) + " ▶"), x1 + midW/2, cy + 10, `400 11px ${F}`, d > 0 ? "#4c9bf5" : d < 0 ? "#ef5a5a" : "#8c99b3", "center");
+    if(laneIms[k]) g.drawImage(laneIms[k], x1 + midW/2 - 11, cy - 26, 22, 22);
+    text(ROLE_JA[ROLES[k]], x1 + midW/2, cy + 5, `700 12px ${F}`, "#c5cede", "center");
+    text(d === 0 ? "互角" : (d > 0 ? "◀ +" + d : "+" + (-d) + " ▶"), x1 + midW/2, cy + 20, `400 11px ${F}`, d > 0 ? "#4c9bf5" : d < 0 ? "#ef5a5a" : "#8c99b3", "center");
     y += rowH;
   }
   g.fillStyle = "#2a364d"; g.fillRect(x0, y, W - pad*2, 1);
-  text(`配置：${modeLabel()}`, x3, ty, `400 13px ${F}`, "#8c99b3", "right");
   text(`チーム合計の差 ${Math.abs(sumA-sumB)}　／　レーン対面の差（平均） ${Math.round(s.laneAvg)}　／　得意ロールからの落差（1人平均） ${Math.round(s.loss)}　　※100 = 1ディビジョン分`,
        x0, y + footH/2 + 4, `400 13px ${F}`, "#8c99b3");
   return c;
 }
-$("btnCopyImg").addEventListener("click", () => {
+$("btnCopyImg").addEventListener("click", async () => {
   if(!solutions.length) return;
-  resultCanvas().toBlob(async blob => {
+  const b = $("btnCopyImg"); b.disabled = true;
+  const save = blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "team.png";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    flash("btnCopyImg", "画像を保存しました");
+  };
+  try{
+    const canvas = await resultCanvas();
+    const blob = await new Promise((res, rej) => { try{ canvas.toBlob(x => x ? res(x) : rej(new Error("blob")), "image/png"); }catch(e){ rej(e); } });
     try{
       await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
       flash("btnCopyImg", "画像をコピーしました");
-    }catch(e){
-      // クリップボードに入れられないブラウザでは、画像ファイルとして保存する
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = "team.png";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      flash("btnCopyImg", "画像を保存しました");
-    }
-  }, "image/png");
+    }catch(e){ save(blob); }   // クリップボードに入れられないブラウザでは、画像ファイルとして保存する
+  }catch(e){ flash("btnCopyImg", "画像を作れませんでした"); }
+  b.disabled = false;
 });
 $("btnCopy").addEventListener("click", async () => {
   const text = resultText();
@@ -990,6 +1113,7 @@ $("btnCopy").addEventListener("click", async () => {
 });
 
 load();
+loadChampions();
 $("platform").value = state.platform;
 renderSettings(); renderSlots(); renderRoster();
 </script>
