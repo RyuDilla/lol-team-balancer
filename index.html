@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoLカスタム チーム分け</title>
+<style>
+:root{
+  --bg:#0e1420; --panel:#161e2e; --panel2:#1c2639; --line:#2a364d;
+  --text:#e6ebf5; --muted:#8c99b3; --accent:#c8a45a; --accent2:#e2c67f;
+  --blue:#4c9bf5; --red:#ef5a5a; --ok:#3fbf8f; --warn:#e0a13a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Yu Gothic UI","Meiryo",sans-serif;font-size:14px;line-height:1.6}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:.04em}
+h1 span{color:var(--accent)}
+.lead{color:var(--muted);margin:0 0 20px;font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.panel h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.panel h2 .num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#1a1405;font-size:12px;align-items:center;justify-content:center;font-weight:700}
+.hint{color:var(--muted);font-size:12px}
+textarea{width:100%;height:150px;background:#0b111c;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:Consolas,"Yu Gothic UI",monospace;font-size:13px;resize:vertical}
+select,input[type=number]{background:#0b111c;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:13px;font-family:inherit}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:700}
+button.primary:hover{background:var(--accent2)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.mini{padding:2px 7px;font-size:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.status{font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+td.name{text-align:left;min-width:170px}
+td.name .n{font-weight:600}
+td.name .t{color:var(--muted);font-size:12px}
+td.name .e{color:var(--red);font-size:12px}
+td.name .w{color:var(--warn);font-size:12px}
+.rolecell{border-radius:7px;padding:4px 3px;min-width:104px;border:1px solid transparent}
+.rolecell input{width:64px;text-align:center;background:transparent;border:1px solid transparent;font-weight:700;font-size:14px;padding:1px}
+.rolecell input:hover,.rolecell input:focus{border-color:var(--line);background:#0b111c}
+.rolecell.over input{color:var(--accent2)}
+.rolecell.ng{opacity:.35}
+.rolecell.ng input{text-decoration:line-through}
+.rolecell .sub{font-size:11px;color:var(--muted);white-space:nowrap}
+.rolecell .ngbtn{font-size:10px;padding:0 5px;margin-top:2px;border-radius:4px;color:var(--muted)}
+.rolecell.ng .ngbtn{color:var(--red);border-color:var(--red)}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:8px}
+.settings label{display:block;font-size:12px;color:var(--muted)}
+.settings input[type=range]{width:100%;accent-color:var(--accent)}
+.settings b{color:var(--text)}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.teams{display:grid;grid-template-columns:1fr 64px 1fr;gap:0;margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.teams .head{padding:10px 14px;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:baseline}
+.teams .head.a{background:rgba(76,155,245,.16);color:#a9cdfb}
+.teams .head.b{background:rgba(239,90,90,.16);color:#f6b0b0;flex-direction:row-reverse}
+.teams .head small{font-weight:400;font-size:12px;color:var(--muted)}
+.teams .mid{background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.05em}
+.teams .cell{padding:9px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.teams .cell.b{flex-direction:row-reverse;text-align:right}
+.teams .cell .pn{font-weight:600}
+.teams .cell .pr{font-size:12px;color:var(--muted);white-space:nowrap}
+.teams .cell .off{color:var(--warn)}
+.teams .mid.lane{border-top:1px solid var(--line);flex-direction:column;line-height:1.3;padding:4px 0}
+.teams .mid.lane .d{font-weight:400;font-size:10px}
+.d.a{color:var(--blue)} .d.b{color:var(--red)}
+.summary{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.summary b{color:var(--accent2)}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty{color:var(--muted);padding:14px 0;text-align:center}
+.slots{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(5,auto);grid-auto-flow:column;gap:8px 14px}
+@media(max-width:700px){.slots{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
+.slot{position:relative;display:flex;align-items:center;gap:8px;background:#0b111c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:44px}
+.slot:focus-within{border-color:var(--accent)}
+.slot.filled{background:var(--panel2);border-color:#3a4a68}
+.slot .no{color:var(--muted);font-size:12px;width:18px;text-align:center;flex:none}
+.slot input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none;font-family:inherit}
+.slot .who{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .t,.dd .t{color:var(--muted);font-size:12px;font-weight:400}
+.slot .rk,.dd .rk{font-size:12px;color:var(--accent2);white-space:nowrap}
+.dd{position:absolute;left:0;right:0;top:100%;z-index:20;background:#101827;border:1px solid var(--accent);border-radius:8px;margin-top:4px;max-height:300px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.dd .it{padding:7px 10px;display:flex;justify-content:space-between;gap:10px;cursor:pointer}
+.dd .it.sel,.dd .it:hover{background:var(--panel2)}
+.dd .hd{padding:5px 10px;font-size:11px;color:var(--muted)}
+a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LoLカスタム <span>チーム分け</span></h1>
+  <p class="lead">DeepLoLの戦績から「ランク」と「ロールごとの実力」を出して、誰がどのレーンに行くかまで含めて10人を2チームに分けます。</p>
+
+  <div class="panel">
+    <h2><span class="num">1</span>参加者を入れる</h2>
+    <div class="row" style="margin:0 0 10px">
+      <label>サーバー
+        <select id="platform">
+          <option>JP1</option><option>KR</option><option>NA1</option><option>EUW1</option><option>EUN1</option>
+          <option>OC1</option><option>BR1</option><option>LA1</option><option>LA2</option><option>TR1</option><option>TW2</option><option>VN2</option>
+        </select>
+      </label>
+      <button id="btnClearSlots">全部の枠を空にする</button>
+      <span class="status" id="fetchStatus"></span>
+    </div>
+    <div class="slots" id="slots"></div>
+    <p class="hint" style="margin:8px 0 0">枠に名前を数文字打つと候補が出ます（↑↓で選んでEnter、またはクリック）。空の枠をクリックすると、前に入れたメンバーがすぐ選べます。候補に出ない人は「名前#タグ」まで打ってEnter。</p>
+    <details style="margin-top:10px">
+      <summary>まとめて貼り付ける（ロビーのチャットなど）</summary>
+      <textarea id="ids" style="margin-top:8px" placeholder="Riot IDを1行に1人ずつ（例）&#10;プレイヤー名#JP1&#10;もう一人#1234&#10;&#10;ロビーのチャット（「○○#JP1 がロビーに参加しました」）をそのまま貼ってもOK"></textarea>
+      <div class="row"><button class="primary" id="btnFetch">空いている枠に入れる</button></div>
+    </details>
+    <p class="hint" style="margin:8px 0 0">DeepLoLに載っていない人・データが古い人は、DeepLoLでその人のページを開いて「更新」してから取り直してください。</p>
+  </div>
+
+  <div class="panel">
+    <h2><span class="num">2</span>メンバーとロール別レート <span class="status" id="activeCount" style="margin-left:auto"></span></h2>
+    <div class="tablewrap"><table id="roster"></table></div>
+    <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。</p>
+    <details style="margin-top:10px">
+      <summary>計算の調整</summary>
+      <div class="settings">
+        <label>慣れていないロールの減点（最大）：<b id="vOff"></b>
+          <input type="range" id="sOff" min="0" max="800" step="50"></label>
+        <label>チーム合計の均等さを重視：<b id="vT"></b>
+          <input type="range" id="sT" min="0" max="2" step="0.1"></label>
+        <label>レーン対面の均等さを重視：<b id="vL"></b>
+          <input type="range" id="sL" min="0" max="2" step="0.1"></label>
+        <label>得意ロールに置くことを重視：<b id="vC"></b>
+          <input type="range" id="sC" min="0" max="2" step="0.1"></label>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2><span class="num">3</span>チーム分け</h2>
+    <div class="nav">
+      <button class="primary" id="btnSolve">チーム分けする</button>
+      <button id="btnPrev" disabled>◀ 前の案</button>
+      <button id="btnNext" disabled>次の案 ▶</button>
+      <button id="btnSwap" disabled>A/Bを入れ替え</button>
+      <button id="btnCopy" disabled>結果をコピー</button>
+      <span class="status" id="solveStatus"></span>
+    </div>
+    <div id="result"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const API = "https://b2c-api-cdn.deeplol.gg";
+const ROLES = ["Top","Jungle","Middle","Bot","Supporter"];
+const ROLE_JA = {Top:"TOP",Jungle:"JG",Middle:"MID",Bot:"ADC",Supporter:"SUP"};
+const TIERS = ["IRON","BRONZE","SILVER","GOLD","PLATINUM","EMERALD","DIAMOND"];
+const TIER_JA = ["アイアン","ブロンズ","シルバー","ゴールド","プラチナ","エメラルド","ダイヤ"];
+const TIER_S = ["I","B","S","G","P","E","D"];
+const APEX = {MASTER:1,GRANDMASTER:1,CHALLENGER:1};
+const STORE_KEY = "lolTeamBalancer.v1";
+const DEFAULT_SETTINGS = {off:400, wT:1, wL:0.5, wC:1};
+const DEFAULT_BASE = 1000; // データなしの仮置き（シルバー2相当）
+
+let state = {players:[], slots:new Array(10).fill(null), settings:{...DEFAULT_SETTINGS}, platform:"JP1"};
+let solutions = [], solIdx = 0, swapped = false;
+
+/* ---------- 保存 ---------- */
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if(s && Array.isArray(s.players)){
+      state.players = s.players;
+      state.settings = {...DEFAULT_SETTINGS, ...(s.settings||{})};
+      state.platform = s.platform || "JP1";
+      const has = id => id && state.players.some(p => p.id === id);
+      let slots = Array.isArray(s.slots) ? s.slots.slice(0, 10).map(id => has(id) ? id : null) : [];
+      while(slots.length < 10) slots.push(null);
+      state.slots = slots;
+    }
+  }catch(e){}
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------- レート換算 ---------- */
+function tierToRating(tier, division, lp){
+  if(!tier) return null;
+  const t = String(tier).toUpperCase();
+  lp = Math.max(0, Number(lp)||0);
+  if(APEX[t]) return 2800 + lp;
+  const i = TIERS.indexOf(t);
+  if(i < 0) return null;
+  const d = Math.min(4, Math.max(1, Number(division)||4));
+  return i*400 + (4-d)*100 + Math.min(lp, 100);
+}
+function ratingLabel(r, short){
+  if(r == null || !isFinite(r)) return "-";
+  r = Math.round(r);
+  if(r >= 2800) return short ? "M" + (r-2800) : "マスター+ " + (r-2800) + "LP";
+  if(r < 0) r = 0;
+  const i = Math.floor(r/400), d = 4 - Math.floor((r%400)/100);
+  return short ? TIER_S[i] + d : TIER_JA[i] + d;
+}
+
+/* ---------- 入力の解釈 ---------- */
+function parseIds(text){
+  const out = [], seen = new Set();
+  for(let line of text.split(/\r?\n/)){
+    line = line.replace(/[⁦-⁩‎‏‪-‮]/g, "").trim();
+    line = line.replace(/\s*(がロビーに(参加|入室)しました|がロビーから退出しました|joined the lobby|left the lobby)[。.]?\s*$/i, "").trim();
+    const h = line.lastIndexOf("#");
+    if(h <= 0) continue;
+    const name = line.slice(0, h).trim(), tag = line.slice(h+1).trim();
+    if(!tag || tag.length > 5) continue;
+    const key = (name + "#" + tag).toLowerCase();
+    if(name && !seen.has(key)){ seen.add(key); out.push({name, tag}); }
+  }
+  return out;
+}
+
+/* ---------- DeepLoL ---------- */
+async function api(path){
+  const res = await fetch(API + path);
+  if(!res.ok){ const e = new Error("HTTP " + res.status); e.status = res.status; throw e; }
+  return res.json();
+}
+let seasonCache = null;
+async function currentSeason(){
+  if(seasonCache) return seasonCache;
+  try{
+    const d = await api("/common/season-list");
+    seasonCache = Math.max(...d.season_list);
+  }catch(e){ seasonCache = 27; }
+  return seasonCache;
+}
+function blankPlayer(name, tag, platform, error){
+  return {id:(name+"#"+tag).toLowerCase(), name, tag, platform, base:null, baseSrc:"none",
+          roles:null, all:null, overrides:{}, ng:{}, baseOverride:null, fetchedAt:Date.now(), error:error||null};
+}
+async function fetchPlayer(name, tag, platform){
+  const p = blankPlayer(name, tag, platform);
+  let info;
+  try{
+    const d = await api(`/summoner/summoner?platform_id=${platform}&riot_id_name=${encodeURIComponent(name)}&riot_id_tag_line=${encodeURIComponent(tag)}`);
+    info = d.summoner_basic_info_dict;
+  }catch(e){ info = null; }
+  if(!info || !info.puu_id){ p.error = "DeepLoLで見つかりません（手入力で使えます）"; return p; }
+  p.puuid = info.puu_id;
+  if(info.riot_id_name){ p.name = info.riot_id_name; p.tag = info.riot_id_tag_line || tag; }
+
+  // ランク：ソロ → フレックス → 前シーズン の順で採用
+  try{
+    const rt = await api(`/summoner/summoner-realtime?platform_id=${platform}&summoner_id=&puu_id=${encodeURIComponent(p.puuid)}`);
+    const st = rt.season_tier_info_dict || {};
+    const solo = st.ranked_solo_5x5 || {}, flex = st.ranked_flex_sr || {};
+    let r = tierToRating(solo.tier, solo.division, solo.league_points);
+    if(r != null){ p.base = r; p.baseSrc = "solo"; }
+    else{
+      r = tierToRating(flex.tier, flex.division, flex.league_points);
+      if(r != null){ p.base = r; p.baseSrc = "flex"; }
+    }
+  }catch(e){}
+  if(p.base == null){
+    const prev = (info.previous_season_tier_list || []).slice().sort((a,b)=>b.season-a.season)[0];
+    if(prev){
+      const r = tierToRating(prev.tier, prev.division, prev.lp);
+      if(r != null){ p.base = r; p.baseSrc = "prev"; }
+    }
+  }
+
+  // ロール別の戦績
+  try{
+    const season = await currentSeason();
+    const cs = await api(`/summoner/champion-stat?puu_id=${encodeURIComponent(p.puuid)}&season=${season}&platform_id=${platform}`);
+    const tot = cs.counter_champion_stats && cs.counter_champion_stats.total;
+    if(tot && tot.enemy_champion_stats){
+      const agg = lane => {
+        const list = tot.enemy_champion_stats[lane] || [];
+        const a = list.find(x => x.champion_id === 0) || null;
+        return a ? {g:a.games||0, w:a.wins||0, wr:a.win_rate||0, ai:a.ai_score||0} : {g:0,w:0,wr:0,ai:0};
+      };
+      p.all = agg("All");
+      p.roles = {};
+      for(const r of ROLES){
+        p.roles[r] = agg(r);
+        const pr = tot.position_rate && tot.position_rate[r];
+        if(pr && !p.roles[r].g && pr.games){ p.roles[r] = {g:pr.games, w:pr.wins, wr:pr.win_rate, ai:0}; }
+      }
+      if(!ROLES.some(r => p.roles[r].g > 0)) p.roles = null;
+    }
+  }catch(e){}
+  return p;
+}
+
+/* ---------- ロール別レート ---------- */
+function baseOf(p){ return p.baseOverride != null ? p.baseOverride : (p.base != null ? p.base : DEFAULT_BASE); }
+function autoRoleRating(p, role){
+  const B = baseOf(p);
+  if(!p.roles) return B;
+  const S = state.settings;
+  const gs = ROLES.map(r => p.roles[r].g);
+  const G = gs.reduce((a,b)=>a+b,0), maxg = Math.max(...gs);
+  const st = p.roles[role];
+  if(G <= 0) return B;
+  // 慣れ：一番やっているロール（上限50戦）に対してどれだけ回数があるか
+  const fam = Math.min(1, Math.sqrt(st.g / Math.min(maxg, 50)));
+  const conf = Math.min(1, G/30);           // 試合数が少ない人は減点を弱める
+  const penalty = -S.off * (1-fam) * conf;
+  // 出来：全体平均と比べたそのロールの勝率・AIスコア（試合数が少ないほど割り引く）
+  let perf = 0;
+  if(st.g > 0 && p.all && p.all.g > 0){
+    const dWr = st.wr - p.all.wr;
+    const dAi = (st.ai && p.all.ai) ? st.ai - p.all.ai : 0;
+    perf = (dWr*8 + dAi*8) * (st.g/(st.g+30));
+    perf = Math.max(-150, Math.min(150, perf));
+  }
+  return Math.round(B + penalty + perf);
+}
+function roleRating(p, role){
+  if(p.ng && p.ng[role]) return null;
+  if(p.overrides && p.overrides[role] != null) return p.overrides[role];
+  return autoRoleRating(p, role);
+}
+
+/* ---------- チーム分け ---------- */
+const PERMS = (function(){
+  const out = [];
+  (function rec(a, rest){
+    if(!rest.length){ out.push(a); return; }
+    rest.forEach((x,i)=>rec(a.concat(x), rest.slice(0,i).concat(rest.slice(i+1))));
+  })([], [0,1,2,3,4]);
+  return out;
+})();
+function solve(players, settings){
+  const n = players.length;
+  if(n !== 10) return [];
+  const R = players.map(p => ROLES.map(r => roleRating(p, r)));
+  const best = R.map(row => Math.max(...row.filter(v => v != null)));
+  function options(team){
+    const opts = [];
+    for(const perm of PERMS){
+      const lanes = new Array(5); let sum = 0, loss = 0, ok = true;
+      for(let k=0;k<5;k++){
+        const pi = team[perm[k]], v = R[pi][k];
+        if(v == null){ ok = false; break; }
+        lanes[k] = v; sum += v; loss += best[pi] - v;
+      }
+      if(ok) opts.push({perm, lanes, sum, loss});
+    }
+    return opts;
+  }
+  const results = [];
+  const rest = [1,2,3,4,5,6,7,8,9];
+  (function choose(start, picked){
+    if(picked.length === 4){
+      const A = [0].concat(picked), B = rest.filter(x => !picked.includes(x));
+      const oa = options(A), ob = options(B);
+      let bestCost = Infinity, bestPair = null;
+      for(const a of oa) for(const b of ob){
+        let lane = 0;
+        for(let k=0;k<5;k++) lane += Math.abs(a.lanes[k]-b.lanes[k]);
+        const cost = settings.wT*Math.abs(a.sum-b.sum) + settings.wL*lane/5 + settings.wC*(a.loss+b.loss)/10;
+        if(cost < bestCost){ bestCost = cost; bestPair = [a,b,lane]; }
+      }
+      if(bestPair){
+        const [a,b,lane] = bestPair;
+        results.push({
+          cost:bestCost,
+          A:a.perm.map((ti,k)=>({p:players[A[ti]], r:a.lanes[k], best:best[A[ti]]})),
+          B:b.perm.map((ti,k)=>({p:players[B[ti]], r:b.lanes[k], best:best[B[ti]]})),
+          sumA:a.sum, sumB:b.sum, laneAvg:lane/5, loss:(a.loss+b.loss)/10
+        });
+      }
+      return;
+    }
+    for(let i=start;i<rest.length;i++) choose(i+1, picked.concat(rest[i]));
+  })(0, []);
+  results.sort((x,y)=>x.cost-y.cost);
+  return results;
+}
+
+/* ---------- 表示 ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function tierOptions(p){
+  const auto = p.base != null
+    ? `${ratingLabel(p.base)}${p.base<2800 ? " "+(Math.round(p.base)%100)+"LP" : ""}（${ {solo:"ソロ",flex:"フレックス",prev:"前期"}[p.baseSrc] }）`
+    : "未設定（仮：シルバー2）";
+  let h = `<option value="">${esc(auto)}</option>`;
+  for(let i=0;i<TIERS.length;i++) for(let d=4;d>=1;d--){
+    const v = i*400 + (4-d)*100;
+    h += `<option value="${v}" ${p.baseOverride===v?"selected":""}>${TIER_JA[i]}${d}</option>`;
+  }
+  [["マスター",2800],["グランドマスター",3300],["チャレンジャー",3800]].forEach(([n,v])=>{
+    h += `<option value="${v}" ${p.baseOverride===v?"selected":""}>${n}</option>`;
+  });
+  return h;
+}
+function cellColor(r, base){
+  if(r == null) return "transparent";
+  const d = Math.max(-400, Math.min(100, r - base));
+  const t = (d + 400) / 500;                 // 0(苦手)〜1(得意)
+  return `rgba(63,191,143,${(0.04 + t*t*0.3).toFixed(3)})`;
+}
+function slotPlayers(){
+  return state.slots.map(id => id ? state.players.find(p => p.id === id) : null).filter(Boolean);
+}
+function renderRoster(){
+  const t = $("roster");
+  const n = slotPlayers().length;
+  $("activeCount").textContent = `参加 ${n} / 10人`;
+  $("activeCount").style.color = n === 10 ? "var(--ok)" : "var(--warn)";
+  if(!n){
+    t.innerHTML = `<tr><td class="empty">まだ誰もいません。上の枠にメンバーを入れてください。</td></tr>`;
+    return;
+  }
+  let h = `<tr><th>枠</th><th style="text-align:left">プレイヤー</th><th>基準ランク</th>${ROLES.map(r=>`<th>${ROLE_JA[r]}</th>`).join("")}<th></th></tr>`;
+  state.slots.forEach((sid, si) => {
+    const i = sid ? state.players.findIndex(x => x.id === sid) : -1;
+    if(i < 0) return;
+    const p = state.players[i];
+    const B = baseOf(p);
+    const notes = [];
+    if(p.error) notes.push(`<div class="e">${esc(p.error)}</div>`);
+    else{
+      if(p.base == null && p.baseOverride == null) notes.push(`<div class="w">ランク不明 → 基準ランクを選んでください</div>`);
+      else if(p.baseSrc === "prev" && p.baseOverride == null) notes.push(`<div class="w">今期ランクなし（前シーズンを使用）</div>`);
+      if(!p.roles) notes.push(`<div class="w">ロール戦績なし → 数字を手で調整してください</div>`);
+    }
+    h += `<tr>
+      <td style="color:var(--muted)">${si+1}</td>
+      <td class="name"><div class="n">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></div>${notes.join("")}</td>
+      <td><select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></td>`;
+    for(const r of ROLES){
+      const v = roleRating(p, r), ng = p.ng && p.ng[r], over = p.overrides && p.overrides[r] != null;
+      const shown = ng ? (over ? p.overrides[r] : autoRoleRating(p, r)) : v;
+      const st = p.roles ? p.roles[r] : null;
+      const sub = st && st.g ? `${st.g}戦 ${Math.round(st.wr)}%` : (p.roles ? "0戦" : "–");
+      h += `<td><div class="rolecell ${ng?"ng":""} ${over?"over":""}" style="background:${cellColor(ng?null:v, B)}">
+        <input type="number" step="50" value="${shown}" data-act="rate" data-i="${i}" data-r="${r}" title="${esc(ratingLabel(shown))}">
+        <div class="sub">${ratingLabel(shown, true)}・${sub}</div>
+        <button class="mini ngbtn" data-act="ng" data-i="${i}" data-r="${r}">NG</button>
+      </div></td>`;
+    }
+    h += `<td style="white-space:nowrap">
+      <button class="mini" data-act="reset" data-i="${i}" title="手入力を消して自動計算に戻す">戻す</button>
+      <button class="mini" data-act="refresh" data-i="${i}" title="戦績を取り直す">更新</button>
+      <button class="mini" data-act="del" data-i="${i}" title="枠から外す">×</button></td></tr>`;
+  });
+  t.innerHTML = h;
+}
+
+/* ---------- 参加枠（スロット）と検索候補 ---------- */
+const slotBusy = {};
+const INVIS = /[⁦-⁩‎‏‪-‮]/g;
+function tierName(tier, div){
+  const t = String(tier||"").toUpperCase();
+  if(t === "MASTER") return "マスター";
+  if(t === "GRANDMASTER") return "グランドマスター";
+  if(t === "CHALLENGER") return "チャレンジャー";
+  const i = TIERS.indexOf(t);
+  return i < 0 ? "ランクなし" : TIER_JA[i] + (div || "");
+}
+function renderSlots(){
+  $("slots").innerHTML = state.slots.map((_, i) => `<div class="slot" id="slot${i}"></div>`).join("");
+  state.slots.forEach((_, i) => renderSlot(i));
+}
+function renderSlot(i){
+  const el = $("slot"+i), id = state.slots[i], p = id && state.players.find(x => x.id === id);
+  el.className = "slot" + (p ? " filled" : "");
+  const no = `<span class="no">${i+1}</span>`;
+  if(slotBusy[i]) el.innerHTML = no + `<span class="who" style="color:var(--muted);font-weight:400">${esc(slotBusy[i])} を取得中…</span>`;
+  else if(p) el.innerHTML = no + `<span class="who">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></span>
+    <span class="rk">${p.error ? "データなし" : esc(ratingLabel(baseOf(p)))}</span>
+    <button class="mini" data-clear="${i}" title="この枠を空ける">×</button>`;
+  else el.innerHTML = no + `<input data-slot="${i}" placeholder="名前で検索（または 名前#タグ）" autocomplete="off" spellcheck="false"><div class="dd" hidden></div>`;
+}
+let ddItems = [], ddSel = -1, ddSlot = -1, ddTimer = null, ddSeq = 0;
+function ddEl(i){ const s = $("slot"+i); return s ? s.querySelector(".dd") : null; }
+function closeDd(){
+  ddSeq++;
+  if(ddSlot >= 0){ const d = ddEl(ddSlot); if(d) d.hidden = true; }
+  ddItems = []; ddSel = -1; ddSlot = -1;
+}
+function showDd(i, items, header){
+  const d = ddEl(i); if(!d) return;
+  ddSlot = i; ddItems = items; ddSel = items.length ? 0 : -1;
+  if(!items.length && !header){ d.hidden = true; return; }
+  d.innerHTML = (header ? `<div class="hd">${esc(header)}</div>` : "") + items.map((it, k) =>
+    `<div class="it ${k===ddSel?"sel":""}" data-k="${k}"><span>${esc(it.name)} <span class="t">#${esc(it.tag)}</span></span><span class="rk">${esc(it.rank)}</span></div>`).join("");
+  d.hidden = false;
+}
+function moveSel(delta){
+  if(!ddItems.length) return;
+  ddSel = (ddSel + delta + ddItems.length) % ddItems.length;
+  const d = ddEl(ddSlot); if(!d) return;
+  d.querySelectorAll(".it").forEach((el, k) => { el.classList.toggle("sel", k === ddSel); if(k === ddSel) el.scrollIntoView({block:"nearest"}); });
+}
+function historyItems(){
+  const used = new Set(state.slots.filter(Boolean));
+  return state.players.filter(p => !used.has(p.id) && !p.error).slice(-15).reverse()
+    .map(p => ({name:p.name, tag:p.tag, rank:ratingLabel(baseOf(p)), saved:p.id}));
+}
+function splitId(text){
+  text = text.replace(INVIS, "").trim();
+  const h = text.lastIndexOf("#");
+  return h > 0 ? {name:text.slice(0,h).trim(), tag:text.slice(h+1).trim()} : {name:text, tag:""};
+}
+async function suggest(i, text){
+  const seq = ++ddSeq;
+  const {name, tag} = splitId(text);
+  if(!name){ const h = historyItems(); showDd(i, h, h.length ? "前に入れたメンバー" : ""); return; }
+  let list = [];
+  try{
+    const d = await api(`/summoner/summoner-search-auto-complete?platform_id=${$("platform").value}&riot_id_name=${encodeURIComponent(name)}&riot_id_tag_line=${encodeURIComponent(tag)}`);
+    list = d.summoners || [];
+  }catch(e){}
+  if(seq !== ddSeq) return;
+  const used = new Set(state.slots.filter(Boolean));
+  const low = name.toLowerCase();
+  const saved = historyItems().filter(x => x.name.toLowerCase().includes(low));
+  const savedKeys = new Set(saved.map(x => (x.name+"#"+x.tag).toLowerCase()));
+  const items = saved.concat(list
+    .map(s => ({name:s.riot_id_name, tag:s.riot_id_tag_line, rank:tierName(s.tier, s.division)}))
+    .filter(s => { const k = (s.name+"#"+s.tag).toLowerCase(); return !used.has(k) && !savedKeys.has(k); }));
+  showDd(i, items, items.length ? "" : (tag ? "候補なし：Enterでこのまま取得します" : "候補なし：「名前#タグ」まで入れてEnter"));
+}
+function setStatus(msg){ $("fetchStatus").textContent = msg || ""; }
+async function fillSlot(i, name, tag, savedId, noFocus){
+  closeDd();
+  if(!name || !tag || state.slots[i] || slotBusy[i]) return false;
+  const key = (name+"#"+tag).toLowerCase();
+  let p = state.players.find(x => x.id === (savedId || key));
+  if(p && state.slots.includes(p.id)){ setStatus(`${name}#${tag} はすでに入っています`); return false; }
+  if(!p){
+    slotBusy[i] = name + "#" + tag; renderSlot(i);
+    try{ p = upsert(await fetchPlayer(name, tag, $("platform").value), {name, tag}); }
+    catch(e){ p = upsert(blankPlayer(name, tag, $("platform").value, "取得に失敗しました（通信エラー）"), {name, tag}); }
+    delete slotBusy[i];
+    if(state.slots.includes(p.id)){ renderSlot(i); setStatus(`${name}#${tag} はすでに入っています`); return false; }
+  }
+  state.slots[i] = p.id;
+  setStatus(p.error ? `${p.name}#${p.tag}：${p.error}` : "");
+  save(); renderSlot(i); renderRoster(); clearSolutions();
+  if(!noFocus){
+    const n = state.slots.findIndex((s, k) => !s && !slotBusy[k]);
+    const inp = n >= 0 && $("slot"+n).querySelector("input");
+    if(inp) inp.focus();
+  }
+  return true;
+}
+function pickItem(k){
+  const it = ddItems[k], i = ddSlot;
+  if(it && i >= 0) fillSlot(i, it.name, it.tag, it.saved);
+}
+$("slots").addEventListener("input", e => {
+  const el = e.target; if(el.dataset.slot == null) return;
+  clearTimeout(ddTimer);
+  ddTimer = setTimeout(() => suggest(+el.dataset.slot, el.value), 200);
+});
+$("slots").addEventListener("focusin", e => {
+  const el = e.target; if(el.dataset.slot == null) return;
+  suggest(+el.dataset.slot, el.value);
+});
+$("slots").addEventListener("focusout", e => {
+  if(e.target.dataset.slot == null) return;
+  const i = +e.target.dataset.slot;
+  setTimeout(() => { if(ddSlot === i && document.activeElement !== e.target) closeDd(); }, 150);
+});
+$("slots").addEventListener("keydown", e => {
+  const el = e.target; if(el.dataset.slot == null || e.isComposing) return;
+  if(e.key === "ArrowDown"){ e.preventDefault(); moveSel(1); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); moveSel(-1); }
+  else if(e.key === "Escape"){ closeDd(); }
+  else if(e.key === "Enter"){
+    e.preventDefault();
+    const i = +el.dataset.slot;
+    if(ddSlot === i && ddSel >= 0) pickItem(ddSel);
+    else{ const {name, tag} = splitId(el.value); if(name && tag) fillSlot(i, name, tag); }
+  }
+});
+$("slots").addEventListener("mousedown", e => {
+  const it = e.target.closest(".it");
+  if(it){ e.preventDefault(); pickItem(+it.dataset.k); }
+});
+$("slots").addEventListener("click", e => {
+  const b = e.target.closest("[data-clear]"); if(!b) return;
+  const i = +b.dataset.clear;
+  state.slots[i] = null;
+  save(); renderSlot(i); renderRoster(); clearSolutions();
+});
+$("btnClearSlots").addEventListener("click", () => {
+  state.slots = new Array(10).fill(null);
+  save(); renderSlots(); renderRoster(); clearSolutions(); setStatus("");
+});
+function renderSettings(){
+  const S = state.settings;
+  $("sOff").value = S.off; $("vOff").textContent = S.off + "（約" + (S.off/400).toFixed(1).replace(/\.0$/,"") + "ティア分）";
+  $("sT").value = S.wT; $("vT").textContent = S.wT;
+  $("sL").value = S.wL; $("vL").textContent = S.wL;
+  $("sC").value = S.wC; $("vC").textContent = S.wC;
+}
+function clearSolutions(){
+  solutions = []; solIdx = 0;
+  $("result").innerHTML = ""; $("solveStatus").textContent = "";
+  ["btnPrev","btnNext","btnSwap","btnCopy"].forEach(id => $(id).disabled = true);
+}
+function currentTeams(){
+  const s = solutions[solIdx];
+  return swapped ? {A:s.B, B:s.A, sumA:s.sumB, sumB:s.sumA, s} : {A:s.A, B:s.B, sumA:s.sumA, sumB:s.sumB, s};
+}
+function renderResult(){
+  if(!solutions.length){ $("result").innerHTML = ""; return; }
+  const {A, B, sumA, sumB, s} = currentTeams();
+  const cell = (x, side) => {
+    const off = x.best - x.r >= 150;
+    return `<div class="cell ${side}"><span class="pn">${esc(x.p.name)}</span>
+      <span class="pr ${off?"off":""}">${ratingLabel(x.r, true)}（${x.r}）${off?" 不慣れ":""}</span></div>`;
+  };
+  let h = `<div class="teams">
+    <div class="head a"><span>チームA</span><small>合計 ${sumA.toLocaleString()}（平均 ${ratingLabel(sumA/5)}）</small></div>
+    <div class="mid">VS</div>
+    <div class="head b"><span>チームB</span><small>合計 ${sumB.toLocaleString()}（平均 ${ratingLabel(sumB/5)}）</small></div>`;
+  for(let k=0;k<5;k++){
+    const d = A[k].r - B[k].r;
+    const dtxt = d === 0 ? "互角" : (d > 0 ? "◀ +" + d : "+" + (-d) + " ▶");
+    h += cell(A[k], "a") + `<div class="mid lane">${ROLE_JA[ROLES[k]]}<span class="d ${d>0?"a":d<0?"b":""}">${dtxt}</span></div>` + cell(B[k], "b");
+  }
+  h += `</div><div class="summary">
+    <span>チーム合計の差：<b>${Math.abs(sumA-sumB)}</b></span>
+    <span>レーン対面の差（平均）：<b>${Math.round(s.laneAvg)}</b></span>
+    <span>得意ロールからの落差（1人平均）：<b>${Math.round(s.loss)}</b></span>
+  </div><p class="hint" style="margin:6px 0 0">差の目安：100 = 1ディビジョン分。</p>`;
+  $("result").innerHTML = h;
+  $("solveStatus").textContent = `案 ${solIdx+1} / ${solutions.length}（バランスが良い順）`;
+  $("btnPrev").disabled = solIdx === 0;
+  $("btnNext").disabled = solIdx >= solutions.length-1;
+  $("btnSwap").disabled = false; $("btnCopy").disabled = false;
+}
+function resultText(){
+  const {A, B, sumA, sumB} = currentTeams();
+  const side = (name, T, sum) => `【${name}】合計 ${sum}\n` + T.map((x,k)=>`${ROLE_JA[ROLES[k]].padEnd(4)} ${x.p.name}（${ratingLabel(x.r, true)}）`).join("\n");
+  return side("チームA", A, sumA) + "\n\n" + side("チームB", B, sumB);
+}
+
+/* ---------- 操作 ---------- */
+async function addPlayers(){
+  const list = parseIds($("ids").value);
+  const platform = $("platform").value;
+  state.platform = platform;
+  if(!list.length){ setStatus("Riot ID（名前#タグ）が見つかりませんでした。"); return; }
+  $("btnFetch").disabled = true;
+  let added = 0, skipped = 0;
+  const queue = list.slice();
+  const worker = async () => {
+    while(queue.length){
+      const it = queue.shift();
+      const i = state.slots.findIndex((s, k) => !s && !slotBusy[k]);
+      if(i < 0){ skipped++; continue; }
+      if(await fillSlot(i, it.name, it.tag, null, true)) added++;
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  $("btnFetch").disabled = false;
+  setStatus(`${added}人を枠に入れました` + (skipped ? `（枠がいっぱいで${skipped}人は入れていません）` : ""));
+  $("ids").value = "";
+}
+function upsert(p, typed){
+  const keys = [p.id, (typed.name+"#"+typed.tag).toLowerCase()];
+  const i = state.players.findIndex(x => keys.includes(x.id) || (p.puuid && x.puuid === p.puuid));
+  if(i >= 0){
+    const old = state.players[i];
+    if(p.error && !old.error) return old; // 取り直しに失敗したら前のデータを残す
+    p.id = old.id;
+    p.overrides = old.overrides || {}; p.ng = old.ng || {}; p.baseOverride = old.baseOverride;
+    state.players[i] = p;
+    return p;
+  }
+  state.players.push(p);
+  return p;
+}
+$("btnFetch").addEventListener("click", addPlayers);
+
+$("roster").addEventListener("change", e => {
+  const el = e.target, i = +el.dataset.i, p = state.players[i];
+  if(!p) return;
+  if(el.dataset.act === "base") p.baseOverride = el.value === "" ? null : +el.value;
+  else if(el.dataset.act === "rate"){
+    const v = parseInt(el.value, 10);
+    if(isNaN(v)) delete p.overrides[el.dataset.r]; else p.overrides[el.dataset.r] = v;
+  }else return;
+  save(); renderRoster(); clearSolutions();
+});
+$("roster").addEventListener("click", async e => {
+  const el = e.target.closest("button"); if(!el) return;
+  const i = +el.dataset.i, p = state.players[i]; if(!p) return;
+  const act = el.dataset.act;
+  if(act === "ng"){ p.ng = p.ng || {}; if(p.ng[el.dataset.r]) delete p.ng[el.dataset.r]; else p.ng[el.dataset.r] = true; }
+  else if(act === "reset"){ p.overrides = {}; p.ng = {}; p.baseOverride = null; }
+  else if(act === "del"){ const si = state.slots.indexOf(p.id); if(si >= 0) state.slots[si] = null; }
+  else if(act === "refresh"){
+    el.disabled = true; el.textContent = "…";
+    try{ const np = await fetchPlayer(p.name, p.tag, p.platform || state.platform); upsert(np, {name:p.name, tag:p.tag}); }catch(err){}
+  }else return;
+  save(); renderSlots(); renderRoster(); clearSolutions();
+});
+[["sOff","off"],["sT","wT"],["sL","wL"],["sC","wC"]].forEach(([id,key]) => {
+  $(id).addEventListener("input", () => {
+    state.settings[key] = +$(id).value;
+    renderSettings(); renderRoster(); save(); clearSolutions();
+  });
+});
+$("platform").addEventListener("change", () => { state.platform = $("platform").value; save(); });
+
+$("btnSolve").addEventListener("click", () => {
+  const act = slotPlayers();
+  if(act.length !== 10){
+    clearSolutions();
+    $("solveStatus").textContent = `10個の枠をすべて埋めてください（いま${act.length}人）。`;
+    return;
+  }
+  solutions = solve(act, state.settings); solIdx = 0; swapped = false;
+  if(!solutions.length){
+    clearSolutions();
+    $("solveStatus").textContent = "NGの指定が多すぎて組めません。NGを減らしてください。";
+    return;
+  }
+  renderResult();
+});
+$("btnPrev").addEventListener("click", () => { if(solIdx > 0){ solIdx--; renderResult(); } });
+$("btnNext").addEventListener("click", () => { if(solIdx < solutions.length-1){ solIdx++; renderResult(); } });
+$("btnSwap").addEventListener("click", () => { swapped = !swapped; renderResult(); });
+$("btnCopy").addEventListener("click", async () => {
+  const text = resultText();
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); }catch(_){} ta.remove();
+  }
+  $("btnCopy").textContent = "コピーしました";
+  setTimeout(() => $("btnCopy").textContent = "結果をコピー", 1500);
+});
+
+load();
+$("platform").value = state.platform;
+renderSettings(); renderSlots(); renderRoster();
+</script>
+</body>
+</html>
