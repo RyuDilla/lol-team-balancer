@@ -12,7 +12,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Yu Gothic UI","Meiryo",sans-serif;font-size:14px;line-height:1.6}
-.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 80px}
+.wrap{max-width:1380px;margin:0 auto;padding:24px 16px 80px}
 h1{font-size:22px;margin:0 0 4px;letter-spacing:.04em}
 h1 span{color:var(--accent)}
 .lead{color:var(--muted);margin:0 0 20px;font-size:13px}
@@ -31,7 +31,7 @@ button.mini{padding:2px 7px;font-size:12px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .status{font-size:12px;color:var(--muted)}
 .tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:900px}
+table{border-collapse:collapse;width:100%;min-width:1060px}
 th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
 th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
 td.name{text-align:left;min-width:170px}
@@ -43,6 +43,9 @@ td.name .w{color:var(--warn);font-size:12px}
 .rolecell input{width:64px;text-align:center;background:transparent;border:1px solid transparent;font-weight:700;font-size:14px;padding:1px}
 .rolecell input:hover,.rolecell input:focus{border-color:var(--line);background:#0b111c}
 .rolecell.over input{color:var(--accent2)}
+.rolecell.isMain{border-color:var(--accent)}
+.rolecell.isSub{border:1px dashed var(--accent)}
+select.manual{color:var(--accent2);border-color:var(--accent)}
 .rolecell.ng{opacity:.35}
 .rolecell.ng input{text-decoration:line-through}
 .rolecell .sub{font-size:11px;color:var(--muted);white-space:nowrap}
@@ -127,7 +130,7 @@ a{color:var(--accent2)}
       <button id="btnRefreshAll">全員の戦績を取り直す</button>
     </div>
     <div class="tablewrap"><table id="roster"></table></div>
-    <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。</p>
+    <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。実線の枠＝メインロール、点線の枠＝サブロール。メイン／サブは戦績（20戦以上）から自動で決まり、プルダウンで変更できます。</p>
     <details style="margin-top:10px">
       <summary>計算の調整</summary>
       <div class="settings">
@@ -318,18 +321,49 @@ function statsOf(p){
   return {base:p.base, roles:p.roles, all:p.all, src:p.baseSrc};
 }
 function baseOf(p){ const s = statsOf(p); return p.baseOverride != null ? p.baseOverride : (s.base != null ? s.base : DEFAULT_BASE); }
+/* ---------- メインロール / サブロール ---------- */
+const AUTO_MIN_GAMES = 20;   // ロール戦績の合計がこれ未満だと「データ不足」として自動判定しない
+const SUB_FAM = 0.75;        // 手で指定したサブロールの慣れ（1=メイン並み、0=未経験）
+function autoMainSub(p){
+  if(!p.roles) return {main:null, sub:null};
+  const arr = ROLES.map(r => ({r, g:p.roles[r].g})).sort((a, b) => b.g - a.g);
+  const G = arr.reduce((a, x) => a + x.g, 0);
+  if(G < AUTO_MIN_GAMES) return {main:null, sub:null};
+  return {main:arr[0].r, sub: arr[1].g >= Math.max(5, G*0.1) ? arr[1].r : null};
+}
+function mainSub(p){
+  const auto = autoMainSub(p);
+  const main = p.mainRole || auto.main;
+  let sub = p.subRole === "none" ? null : (p.subRole || auto.sub);
+  if(sub && sub === main) sub = (!p.subRole && auto.main && auto.main !== main) ? auto.main : null;
+  return {main, sub, auto, manualMain: !!p.mainRole, manualSub: !!p.subRole && p.subRole !== "none"};
+}
 function autoRoleRating(p0, role){
   const B = baseOf(p0);
   const p = statsOf(p0);
-  if(!p.roles) return B;
   const S = state.settings;
-  const gs = ROLES.map(r => p.roles[r].g);
-  const G = gs.reduce((a,b)=>a+b,0), maxg = Math.max(...gs);
+  const ms = mainSub(p0);
+  const gs = p.roles ? ROLES.map(r => p.roles[r].g) : [];
+  const G = gs.reduce((a,b)=>a+b,0), maxg = G > 0 ? Math.max(...gs) : 0;
+  if(G <= 0){
+    // 戦績なし：手で決めたメイン・サブだけを頼りにする（どちらも未設定なら全ロール同じ）
+    if(!ms.manualMain && !ms.manualSub) return B;
+    const f = role === ms.main ? 1 : role === ms.sub ? SUB_FAM : 0;
+    return Math.round(B - S.off * (1-f));
+  }
   const st = p.roles[role];
-  if(G <= 0) return B;
   // 慣れ：一番やっているロール（上限50戦）に対してどれだけ回数があるか
-  const fam = Math.min(1, Math.sqrt(st.g / Math.min(maxg, 50)));
-  const conf = Math.min(1, G/30);           // 試合数が少ない人は減点を弱める
+  let fam = Math.min(1, Math.sqrt(st.g / Math.min(maxg, 50)));
+  let conf = Math.min(1, G/30);           // 試合数が少ない人は減点を弱める
+  // 手で決めたメイン・サブは戦績より優先する
+  if(ms.manualMain && role === ms.main) fam = 1;
+  else{
+    if(ms.manualSub && role === ms.sub) fam = Math.max(fam, SUB_FAM);
+    if(ms.manualMain){
+      fam = Math.min(fam, SUB_FAM);                       // メインを手で決めたら、他のロールはサブ扱いまで
+      if(G < AUTO_MIN_GAMES){ if(role !== ms.sub) fam = 0; conf = 1; }   // 戦績が少ない人は指定をそのまま信じる
+    }
+  }
   const penalty = -S.off * (1-fam) * conf;
   // 出来：全体平均と比べたそのロールの勝率・AIスコア（試合数が少ないほど割り引く）
   let perf = 0;
@@ -357,18 +391,37 @@ const PERMS = (function(){
   return out;
 })();
 function solve(players, settings){
+  let r = solveCore(players, settings, true);
+  if(!r.length && settings.assign === "weak") r = solveCore(players, settings, false);   // サブ禁止までだと組めないときは緩める
+  return r;
+}
+function solveCore(players, settings, strict){
   const n = players.length;
   if(n !== 10) return [];
   const R = players.map(p => ROLES.map(r => roleRating(p, r)));
   const best = R.map(row => Math.max(...row.filter(v => v != null)));
   // 配置モード：sub/weak では「一番得意なロール」を禁止し、目標（2番目 or 一番苦手）に近いほど良しとする
   const mode = ASG[settings.assign] ? settings.assign : "main";
-  const forbid = R.map(() => -1), target = best.slice();
+  const forbid = R.map(() => -1), forbid2 = R.map(() => -1), want = R.map(() => -1), target = best.slice();
   if(mode !== "main") R.forEach((row, i) => {
     const vals = row.map((v, k) => ({v, k})).filter(x => x.v != null).sort((a, b) => b.v - a.v);
-    if(vals.length < 2 || vals[0].v === vals[vals.length-1].v) return;   // ロール差が分からない人は制限しない
-    forbid[i] = vals[0].k;
-    target[i] = mode === "sub" ? vals[1].v : vals[vals.length-1].v;
+    if(vals.length < 2) return;
+    const ms = mainSub(players[i]);
+    let mainK = ms.main ? ROLES.indexOf(ms.main) : -1;
+    if(mainK < 0 || row[mainK] == null){
+      if(vals[0].v === vals[vals.length-1].v) return;   // 得意・不得意が分からない人は制限しない
+      mainK = vals[0].k;
+    }
+    const subK = ms.sub ? ROLES.indexOf(ms.sub) : -1;
+    const subOk = subK >= 0 && subK !== mainK && row[subK] != null;
+    const rest = vals.filter(x => x.k !== mainK);
+    forbid[i] = mainK;
+    if(mode === "sub"){
+      if(subOk){ want[i] = subK; target[i] = row[subK]; } else target[i] = rest[0].v;
+    }else{
+      if(subOk && strict) forbid2[i] = subK;
+      target[i] = rest[rest.length-1].v;
+    }
   });
   function options(team){
     const opts = [];
@@ -376,8 +429,9 @@ function solve(players, settings){
       const lanes = new Array(5); let sum = 0, loss = 0, fit = 0, ok = true;
       for(let k=0;k<5;k++){
         const pi = team[perm[k]], v = R[pi][k];
-        if(v == null || forbid[pi] === k){ ok = false; break; }
-        lanes[k] = v; sum += v; loss += best[pi] - v; fit += Math.abs(target[pi] - v);
+        if(v == null || forbid[pi] === k || forbid2[pi] === k){ ok = false; break; }
+        lanes[k] = v; sum += v; loss += best[pi] - v;
+        fit += Math.abs(target[pi] - v) + (want[pi] >= 0 && want[pi] !== k ? 100 : 0);
       }
       if(ok) opts.push({perm, lanes, sum, loss, fit});
     }
@@ -456,6 +510,14 @@ function peakNote(p){
   if(old && (!rec || old.r > rec.r)) parts.push(`それ以前 ${esc(ratingLabel(old.r))}（${year(old.s)}年）`);
   return parts.length ? `<div class="t" title="各シーズン終了時のランク。シーズン途中の最高到達は記録にありません">${parts.join("／")}</div>` : "";
 }
+function roleSelect(p, i, which){
+  const a = mainSub(p).auto[which];
+  const cur = which === "main" ? p.mainRole : p.subRole;
+  let h = `<option value="">自動：${a ? ROLE_JA[a] : (which === "sub" && mainSub(p).auto.main ? "なし" : "不明")}</option>`;
+  if(which === "sub") h += `<option value="none" ${cur==="none"?"selected":""}>なし</option>`;
+  for(const r of ROLES) h += `<option value="${r}" ${cur===r?"selected":""}>${ROLE_JA[r]}</option>`;
+  return `<select data-act="${which}" data-i="${i}" style="width:98px" class="${cur?"manual":""}">${h}</select>`;
+}
 function renderRoster(){
   const t = $("roster");
   const n = slotPlayers().length;
@@ -465,7 +527,7 @@ function renderRoster(){
     t.innerHTML = `<tr><td class="empty">まだ誰もいません。上の枠にメンバーを入れてください。</td></tr>`;
     return;
   }
-  let h = `<tr><th>枠</th><th style="text-align:left">プレイヤー</th><th>基準ランク</th>${ROLES.map(r=>`<th>${ROLE_JA[r]}</th>`).join("")}<th></th></tr>`;
+  let h = `<tr><th>枠</th><th style="text-align:left">プレイヤー</th><th>基準ランク</th><th>メイン／サブ</th>${ROLES.map(r=>`<th>${ROLE_JA[r]}</th>`).join("")}<th></th></tr>`;
   state.slots.forEach((sid, si) => {
     const i = sid ? state.players.findIndex(x => x.id === sid) : -1;
     if(i < 0) return;
@@ -476,19 +538,22 @@ function renderRoster(){
     else{
       if(S.base == null && p.baseOverride == null) notes.push(`<div class="w">ランク不明 → 基準ランクを選んでください</div>`);
       else if(S.src === "prev" && p.baseOverride == null) notes.push(`<div class="w">今期ランクなし（前シーズンを使用）</div>`);
-      if(!S.roles) notes.push(`<div class="w">ロール戦績なし → 数字を手で調整してください</div>`);
+      if(!mainSub(p).main) notes.push(`<div class="w">${S.roles ? "ロール戦績が少ない" : "ロール戦績なし"} → メイン・サブを選んでください</div>`);
       notes.unshift(peakNote(p));
     }
     h += `<tr>
       <td style="color:var(--muted)">${si+1}</td>
       <td class="name"><div class="n">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></div>${notes.join("")}</td>
-      <td><select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></td>`;
+      <td><select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></td>
+      <td style="white-space:nowrap;text-align:left"><div><span class="hint">メイン</span> ${roleSelect(p, i, "main")}</div>
+        <div style="margin-top:3px"><span class="hint">サブ　</span> ${roleSelect(p, i, "sub")}</div></td>`;
+    const MS = mainSub(p);
     for(const r of ROLES){
       const v = roleRating(p, r), ng = p.ng && p.ng[r], over = p.overrides && p.overrides[r] != null;
       const shown = ng ? (over ? p.overrides[r] : autoRoleRating(p, r)) : v;
       const st = S.roles ? S.roles[r] : null;
       const sub = st && st.g ? `${st.g}戦 ${Math.round(st.wr)}%` : (S.roles ? "0戦" : "–");
-      h += `<td><div class="rolecell ${ng?"ng":""} ${over?"over":""}" style="background:${cellColor(ng?null:v, B)}">
+      h += `<td><div class="rolecell ${ng?"ng":""} ${over?"over":""} ${r===MS.main?"isMain":r===MS.sub?"isSub":""}" style="background:${cellColor(ng?null:v, B)}">
         <input type="number" step="50" value="${shown}" data-act="rate" data-i="${i}" data-r="${r}" title="${esc(ratingLabel(shown))}">
         <div class="sub">${ratingLabel(shown, true)}・${sub}</div>
         <button class="mini ngbtn" data-act="ng" data-i="${i}" data-r="${r}">NG</button>
@@ -647,8 +712,8 @@ $("btnClearSlots").addEventListener("click", () => {
 });
 const ASG = {
   main:{label:"得意ロール", hint:"全員をなるべく一番得意なロールに置きます（通常）。"},
-  sub: {label:"サブロール", hint:"一番得意なロールは禁止。なるべく2番目に得意なロールに置きます。"},
-  weak:{label:"不得意ロール", hint:"一番得意なロールは禁止。なるべく苦手なロールに置きます。"}
+  sub: {label:"サブロール", hint:"メインロールは禁止。なるべくサブロールに置きます。"},
+  weak:{label:"不得意ロール", hint:"メインロールとサブロールは禁止。なるべく苦手なロールに置きます。"}
 };
 function asgKey(){ return ASG[state.settings.assign] ? state.settings.assign : "main"; }
 function modeLabel(){ return ASG[asgKey()].label; }
@@ -735,6 +800,7 @@ function upsert(p, typed){
     if(p.error && !old.error) return old; // 取り直しに失敗したら前のデータを残す
     p.id = old.id;
     p.overrides = old.overrides || {}; p.ng = old.ng || {}; p.baseOverride = old.baseOverride;
+    p.mainRole = old.mainRole || null; p.subRole = old.subRole || null;
     state.players[i] = p;
     return p;
   }
@@ -747,6 +813,8 @@ $("roster").addEventListener("change", e => {
   const el = e.target, i = +el.dataset.i, p = state.players[i];
   if(!p) return;
   if(el.dataset.act === "base") p.baseOverride = el.value === "" ? null : +el.value;
+  else if(el.dataset.act === "main") p.mainRole = el.value || null;
+  else if(el.dataset.act === "sub") p.subRole = el.value || null;
   else if(el.dataset.act === "rate"){
     const v = parseInt(el.value, 10);
     if(isNaN(v)) delete p.overrides[el.dataset.r]; else p.overrides[el.dataset.r] = v;
@@ -758,7 +826,7 @@ $("roster").addEventListener("click", async e => {
   const i = +el.dataset.i, p = state.players[i]; if(!p) return;
   const act = el.dataset.act;
   if(act === "ng"){ p.ng = p.ng || {}; if(p.ng[el.dataset.r]) delete p.ng[el.dataset.r]; else p.ng[el.dataset.r] = true; }
-  else if(act === "reset"){ p.overrides = {}; p.ng = {}; p.baseOverride = null; }
+  else if(act === "reset"){ p.overrides = {}; p.ng = {}; p.baseOverride = null; p.mainRole = null; p.subRole = null; }
   else if(act === "del"){ const si = state.slots.indexOf(p.id); if(si >= 0) state.slots[si] = null; }
   else if(act === "refresh"){
     el.disabled = true; el.textContent = "…";
