@@ -130,7 +130,7 @@ a{color:var(--accent2)}
       <button id="btnRefreshAll">全員の戦績を取り直す</button>
     </div>
     <div class="tablewrap"><table id="roster"></table></div>
-    <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。実線の枠＝メインロール、点線の枠＝サブロール。メイン／サブは戦績（20戦以上）から自動で決まり、プルダウンで変更できます。</p>
+    <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。実線の枠＝メインロール、点線の枠＝サブロール。メイン／サブは戦績（20戦以上）から自動で決まり、プルダウンで変更できます。「強さ」はサブロールに置いたときの下げ幅で、自動のままなら戦績から計算します。</p>
     <details style="margin-top:10px">
       <summary>計算の調整</summary>
       <div class="settings">
@@ -324,6 +324,13 @@ function baseOf(p){ const s = statsOf(p); return p.baseOverride != null ? p.base
 /* ---------- メインロール / サブロール ---------- */
 const AUTO_MIN_GAMES = 20;   // ロール戦績の合計がこれ未満だと「データ不足」として自動判定しない
 const SUB_FAM = 0.75;        // 手で指定したサブロールの慣れ（1=メイン並み、0=未経験）
+// 人ごとの「サブの強さ」。frac = 最大減点（スライダー）に対する割合
+const SUB_LEVELS = {
+  same:  {label:"メイン並み",     frac:0},
+  little:{label:"少し落ちる",     frac:0.25},
+  more:  {label:"けっこう落ちる", frac:0.5},
+  far:   {label:"かなり落ちる",   frac:1}
+};
 function autoMainSub(p){
   if(!p.roles) return {main:null, sub:null};
   const arr = ROLES.map(r => ({r, g:p.roles[r].g})).sort((a, b) => b.g - a.g);
@@ -343,12 +350,13 @@ function autoRoleRating(p0, role){
   const p = statsOf(p0);
   const S = state.settings;
   const ms = mainSub(p0);
+  const subLv = SUB_LEVELS[p0.subLevel] ? SUB_LEVELS[p0.subLevel].frac : null;   // 人ごとの「サブの強さ」（未設定なら null）
   const gs = p.roles ? ROLES.map(r => p.roles[r].g) : [];
   const G = gs.reduce((a,b)=>a+b,0), maxg = G > 0 ? Math.max(...gs) : 0;
   if(G <= 0){
     // 戦績なし：手で決めたメイン・サブだけを頼りにする（どちらも未設定なら全ロール同じ）
     if(!ms.manualMain && !ms.manualSub) return B;
-    const f = role === ms.main ? 1 : role === ms.sub ? SUB_FAM : 0;
+    const f = role === ms.main ? 1 : role === ms.sub ? (subLv != null ? 1 - subLv : SUB_FAM) : 0;
     return Math.round(B - S.off * (1-f));
   }
   const st = p.roles[role];
@@ -363,6 +371,8 @@ function autoRoleRating(p0, role){
       fam = Math.min(fam, SUB_FAM);                       // メインを手で決めたら、他のロールはサブ扱いまで
       if(G < AUTO_MIN_GAMES){ if(role !== ms.sub) fam = 0; conf = 1; }   // 戦績が少ない人は指定をそのまま信じる
     }
+    // 「サブの強さ」を選んだ人は、サブロールの減点をその設定で固定する
+    if(subLv != null && role === ms.sub){ fam = 1 - subLv; conf = 1; }
   }
   const penalty = -S.off * (1-fam) * conf;
   // 出来：全体平均と比べたそのロールの勝率・AIスコア（試合数が少ないほど割り引く）
@@ -518,6 +528,15 @@ function roleSelect(p, i, which){
   for(const r of ROLES) h += `<option value="${r}" ${cur===r?"selected":""}>${ROLE_JA[r]}</option>`;
   return `<select data-act="${which}" data-i="${i}" style="width:98px" class="${cur?"manual":""}">${h}</select>`;
 }
+function subLevelSelect(p, i){
+  const has = !!mainSub(p).sub, cur = SUB_LEVELS[p.subLevel] ? p.subLevel : "";
+  let h = `<option value="">自動</option>`;
+  for(const k in SUB_LEVELS){
+    const pts = Math.round(state.settings.off * SUB_LEVELS[k].frac);
+    h += `<option value="${k}" ${cur===k?"selected":""}>${SUB_LEVELS[k].label}（${pts ? "−" + pts : "±0"}）</option>`;
+  }
+  return `<select data-act="sublv" data-i="${i}" style="width:98px" class="${cur?"manual":""}" ${has?"":"disabled"} title="${has ? "サブロールに置いたとき、基準ランクからどれだけ下げるか" : "サブロールが決まっていると選べます"}">${h}</select>`;
+}
 function renderRoster(){
   const t = $("roster");
   const n = slotPlayers().length;
@@ -546,7 +565,8 @@ function renderRoster(){
       <td class="name"><div class="n">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></div>${notes.join("")}</td>
       <td><select data-act="base" data-i="${i}" style="width:150px">${tierOptions(p)}</select></td>
       <td style="white-space:nowrap;text-align:left"><div><span class="hint">メイン</span> ${roleSelect(p, i, "main")}</div>
-        <div style="margin-top:3px"><span class="hint">サブ　</span> ${roleSelect(p, i, "sub")}</div></td>`;
+        <div style="margin-top:3px"><span class="hint">サブ　</span> ${roleSelect(p, i, "sub")}</div>
+        <div style="margin-top:3px"><span class="hint">強さ　</span> ${subLevelSelect(p, i)}</div></td>`;
     const MS = mainSub(p);
     for(const r of ROLES){
       const v = roleRating(p, r), ng = p.ng && p.ng[r], over = p.overrides && p.overrides[r] != null;
@@ -800,7 +820,7 @@ function upsert(p, typed){
     if(p.error && !old.error) return old; // 取り直しに失敗したら前のデータを残す
     p.id = old.id;
     p.overrides = old.overrides || {}; p.ng = old.ng || {}; p.baseOverride = old.baseOverride;
-    p.mainRole = old.mainRole || null; p.subRole = old.subRole || null;
+    p.mainRole = old.mainRole || null; p.subRole = old.subRole || null; p.subLevel = old.subLevel || null;
     state.players[i] = p;
     return p;
   }
@@ -815,6 +835,7 @@ $("roster").addEventListener("change", e => {
   if(el.dataset.act === "base") p.baseOverride = el.value === "" ? null : +el.value;
   else if(el.dataset.act === "main") p.mainRole = el.value || null;
   else if(el.dataset.act === "sub") p.subRole = el.value || null;
+  else if(el.dataset.act === "sublv") p.subLevel = el.value || null;
   else if(el.dataset.act === "rate"){
     const v = parseInt(el.value, 10);
     if(isNaN(v)) delete p.overrides[el.dataset.r]; else p.overrides[el.dataset.r] = v;
@@ -826,7 +847,7 @@ $("roster").addEventListener("click", async e => {
   const i = +el.dataset.i, p = state.players[i]; if(!p) return;
   const act = el.dataset.act;
   if(act === "ng"){ p.ng = p.ng || {}; if(p.ng[el.dataset.r]) delete p.ng[el.dataset.r]; else p.ng[el.dataset.r] = true; }
-  else if(act === "reset"){ p.overrides = {}; p.ng = {}; p.baseOverride = null; p.mainRole = null; p.subRole = null; }
+  else if(act === "reset"){ p.overrides = {}; p.ng = {}; p.baseOverride = null; p.mainRole = null; p.subRole = null; p.subLevel = null; }
   else if(act === "del"){ const si = state.slots.indexOf(p.id); if(si >= 0) state.slots[si] = null; }
   else if(act === "refresh"){
     el.disabled = true; el.textContent = "…";
