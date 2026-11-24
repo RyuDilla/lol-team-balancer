@@ -71,6 +71,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .summary b{color:var(--accent2)}
 .nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .empty{color:var(--muted);padding:14px 0;text-align:center}
+.seg{display:inline-flex}
+.seg button{border-radius:0}
+.seg button:first-child{border-radius:7px 0 0 7px}
+.seg button:last-child{border-radius:0 7px 7px 0;margin-left:-1px}
+.seg button.on{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:700}
 .slots{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(5,auto);grid-auto-flow:column;gap:8px 14px}
 @media(max-width:700px){.slots{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
 .slot{position:relative;display:flex;align-items:center;gap:8px;background:#0b111c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:44px}
@@ -117,6 +122,14 @@ a{color:var(--accent2)}
 
   <div class="panel">
     <h2><span class="num">2</span>メンバーとロール別レート <span class="status" id="activeCount" style="margin-left:auto"></span></h2>
+    <div class="row" style="margin:0 0 10px">
+      <span class="hint">何を基準にするか：</span>
+      <span class="seg">
+        <button id="modeRank" data-mode="rank">ランク戦</button><button id="modeNormal" data-mode="normal">ノーマル戦</button>
+      </span>
+      <button id="btnRefreshAll">全員の戦績を取り直す</button>
+      <span class="status" id="modeHint"></span>
+    </div>
     <div class="tablewrap"><table id="roster"></table></div>
     <p class="hint" style="margin:8px 0 0">数字はレート（アイアン4=0、1ディビジョン=100、マスター=2800+LP）。数字は直接書き換えられます（黄色＝手入力）。「NG」を押すとそのロールには絶対に配置しません。</p>
     <details style="margin-top:10px">
@@ -159,7 +172,7 @@ const TIER_JA = ["アイアン","ブロンズ","シルバー","ゴールド","�
 const TIER_S = ["I","B","S","G","P","E","D"];
 const APEX = {MASTER:1,GRANDMASTER:1,CHALLENGER:1};
 const STORE_KEY = "lolTeamBalancer.v1";
-const DEFAULT_SETTINGS = {off:400, wT:1, wL:0.5, wC:1};
+const DEFAULT_SETTINGS = {mode:"rank", off:400, wT:1, wL:0.5, wC:1};
 const DEFAULT_BASE = 1000; // データなしの仮置き（シルバー2相当）
 
 let state = {players:[], slots:new Array(10).fill(null), settings:{...DEFAULT_SETTINGS}, platform:"JP1"};
@@ -294,13 +307,74 @@ async function fetchPlayer(name, tag, platform){
       if(!ROLES.some(r => p.roles[r].g > 0)) p.roles = null;
     }
   }catch(e){}
+  try{ await fetchNormals(p); }catch(e){}
   return p;
 }
 
 /* ---------- ロール別レート ---------- */
-function baseOf(p){ return p.baseOverride != null ? p.baseOverride : (p.base != null ? p.base : DEFAULT_BASE); }
-function autoRoleRating(p, role){
-  const B = baseOf(p);
+/* ---------- ノーマル戦（直近の試合の平均ランク） ---------- */
+const NORMAL_Q = {400:1, 430:1, 480:1, 490:1};   // ドラフト / ブラインド / スイフト / クイック
+const NORMAL_TARGET = 40, NORMAL_SCAN_MAX = 100;
+const NORMAL_MIN = 10;   // これ未満しかノーマルが無い人は、ノーマル基準でもランクで計算する
+function avgTierRating(t, div){
+  if(!t) return null;
+  const parts = String(t).trim().split(/\s+/), tier = parts[0].toUpperCase();
+  if(tier === "MASTER") return 2800;
+  if(tier === "GRANDMASTER") return 3300;
+  if(tier === "CHALLENGER") return 3800;
+  const i = TIERS.indexOf(tier);
+  if(i < 0) return null;
+  const d = Math.min(4, Math.max(1, Number(div) || ({I:1, II:2, III:3, IV:4}[parts[1]]) || 4));
+  return i*400 + (4-d)*100 + 50;   // ディビジョンの真ん中として扱う
+}
+async function pool(items, n, fn){
+  const out = []; let k = 0;
+  await Promise.all(Array.from({length:n}, async () => {
+    while(k < items.length){ const i = k++; try{ out[i] = await fn(items[i]); }catch(e){ out[i] = null; } }
+  }));
+  return out;
+}
+async function fetchNormals(p){
+  const now = Math.floor(Date.now()/1000);
+  const roles = {}; ROLES.forEach(r => roles[r] = {g:0, w:0, ai:0});
+  let n = 0, rn = 0, sum = 0, wins = 0, ai = 0, scanned = 0;
+  for(let off = 0; off < NORMAL_SCAN_MAX && n < NORMAL_TARGET; off += 20){
+    let l;
+    try{ l = await api(`/match/matches?puu_id=${encodeURIComponent(p.puuid)}&platform_id=${p.platform}&offset=${off}&count=20&queue_type=ALL&champion_id=0&only_list=1&last_updated_at=${now}`); }
+    catch(e){ break; }
+    const ids = (l.match_id_list || []).map(x => x.match_id);
+    if(!ids.length) break;
+    const ms = await pool(ids, 6, id => api(`/match/match-cached?match_id=${id}&platform_id=${p.platform}`));
+    for(const m of ms){
+      if(!m || !m.match_basic_dict) continue;
+      scanned++;
+      const b = m.match_basic_dict;
+      if(!NORMAL_Q[b.queue_id] || b.is_remake) continue;
+      const me = (m.participants_list || []).find(x => x.puu_id === p.puuid);
+      if(!me) continue;
+      n++; if(me.is_win) wins++; ai += me.ai_score || 0;
+      const r = avgTierRating(b.avg_tier, b.avg_division);
+      if(r != null){ rn++; sum += r; }
+      const ro = roles[me.position];
+      if(ro){ ro.g++; if(me.is_win) ro.w++; ro.ai += me.ai_score || 0; }
+    }
+    if(ids.length < 20) break;
+  }
+  ROLES.forEach(r => { const x = roles[r]; x.wr = x.g ? x.w/x.g*100 : 0; x.ai = x.g ? x.ai/x.g : 0; });
+  p.nm = {n, scanned, base: rn ? Math.round(sum/rn) : null, roles,
+          all: {g:n, w:wins, wr: n ? wins/n*100 : 0, ai: n ? ai/n : 0}};
+}
+
+/* いまの基準（ランク or ノーマル）で使う数字のセットを返す */
+function statsOf(p){
+  if(state.settings.mode === "normal" && p.nm && p.nm.base != null && p.nm.n >= NORMAL_MIN)
+    return {base:p.nm.base, roles:p.nm.roles, all:p.nm.all, src:"normal"};
+  return {base:p.base, roles:p.roles, all:p.all, src:p.baseSrc};
+}
+function baseOf(p){ const s = statsOf(p); return p.baseOverride != null ? p.baseOverride : (s.base != null ? s.base : DEFAULT_BASE); }
+function autoRoleRating(p0, role){
+  const B = baseOf(p0);
+  const p = statsOf(p0);
   if(!p.roles) return B;
   const S = state.settings;
   const gs = ROLES.map(r => p.roles[r].g);
@@ -388,9 +462,12 @@ function solve(players, settings){
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-function tierOptions(p){
+const SRC_JA = {solo:"ソロ", flex:"フレックス", prev:"前期", normal:"ノーマル平均"};
+function tierOptions(p0){
+  const p = Object.assign({baseOverride:p0.baseOverride}, statsOf(p0));
+  const lp = p.src !== "normal" && p.base != null && p.base < 2800 ? " " + (Math.round(p.base)%100) + "LP" : "";
   const auto = p.base != null
-    ? `${ratingLabel(p.base)}${p.base<2800 ? " "+(Math.round(p.base)%100)+"LP" : ""}（${ {solo:"ソロ",flex:"フレックス",prev:"前期"}[p.baseSrc] }）`
+    ? `${ratingLabel(p.base)}${lp}（${SRC_JA[p.src] || ""}）`
     : "未設定（仮：シルバー2）";
   let h = `<option value="">${esc(auto)}</option>`;
   for(let i=0;i<TIERS.length;i++) for(let d=4;d>=1;d--){
@@ -438,13 +515,20 @@ function renderRoster(){
     const i = sid ? state.players.findIndex(x => x.id === sid) : -1;
     if(i < 0) return;
     const p = state.players[i];
-    const B = baseOf(p);
+    const B = baseOf(p), S = statsOf(p);
     const notes = [];
     if(p.error) notes.push(`<div class="e">${esc(p.error)}</div>`);
     else{
-      if(p.base == null && p.baseOverride == null) notes.push(`<div class="w">ランク不明 → 基準ランクを選んでください</div>`);
-      else if(p.baseSrc === "prev" && p.baseOverride == null) notes.push(`<div class="w">今期ランクなし（前シーズンを使用）</div>`);
-      if(!p.roles) notes.push(`<div class="w">ロール戦績なし → 数字を手で調整してください</div>`);
+      const normalMode = state.settings.mode === "normal";
+      if(normalMode && !p.nm) notes.push(`<div class="w">ノーマル未取得 →「更新」を押してください（いまはランクで計算）</div>`);
+      else if(normalMode && (p.nm.base == null || p.nm.n < NORMAL_MIN)) notes.push(`<div class="w">直近${p.nm.scanned}試合中ノーマルは${p.nm.n}戦だけ → ランクで計算</div>`);
+      if(S.base == null && p.baseOverride == null) notes.push(`<div class="w">ランク不明 → 基準ランクを選んでください</div>`);
+      else if(S.src === "prev" && p.baseOverride == null) notes.push(`<div class="w">今期ランクなし（前シーズンを使用）</div>`);
+      if(!S.roles) notes.push(`<div class="w">ロール戦績なし → 数字を手で調整してください</div>`);
+      // ランクとノーマル、両方の数字を常に見えるようにする
+      const rk = p.base != null ? `${ratingLabel(p.base)}（${SRC_JA[p.baseSrc]}）` : "なし";
+      const nm = p.nm ? (p.nm.base != null ? `${ratingLabel(p.nm.base)}（${p.nm.n}戦）` : "なし") : "未取得";
+      notes.unshift(`<div class="t">ランク ${esc(rk)}／ノーマル平均 ${esc(nm)}</div>`);
       notes.unshift(peakNote(p));
     }
     h += `<tr>
@@ -454,8 +538,8 @@ function renderRoster(){
     for(const r of ROLES){
       const v = roleRating(p, r), ng = p.ng && p.ng[r], over = p.overrides && p.overrides[r] != null;
       const shown = ng ? (over ? p.overrides[r] : autoRoleRating(p, r)) : v;
-      const st = p.roles ? p.roles[r] : null;
-      const sub = st && st.g ? `${st.g}戦 ${Math.round(st.wr)}%` : (p.roles ? "0戦" : "–");
+      const st = S.roles ? S.roles[r] : null;
+      const sub = st && st.g ? `${st.g}戦 ${Math.round(st.wr)}%` : (S.roles ? "0戦" : "–");
       h += `<td><div class="rolecell ${ng?"ng":""} ${over?"over":""}" style="background:${cellColor(ng?null:v, B)}">
         <input type="number" step="50" value="${shown}" data-act="rate" data-i="${i}" data-r="${r}" title="${esc(ratingLabel(shown))}">
         <div class="sub">${ratingLabel(shown, true)}・${sub}</div>
@@ -613,8 +697,14 @@ $("btnClearSlots").addEventListener("click", () => {
   state.slots = new Array(10).fill(null);
   save(); renderSlots(); renderRoster(); clearSolutions(); setStatus("");
 });
+function modeLabel(){ return state.settings.mode === "normal" ? "ノーマル戦" : "ランク戦"; }
 function renderSettings(){
   const S = state.settings;
+  $("modeRank").classList.toggle("on", S.mode !== "normal");
+  $("modeNormal").classList.toggle("on", S.mode === "normal");
+  $("modeHint").textContent = S.mode === "normal"
+    ? "直近のノーマル戦（最大40戦）で当たった相手の平均ランクと、そこでのロール回数・勝率で計算します。"
+    : "今期のランクと、ランク戦でのロール回数・勝率で計算します。";
   $("sOff").value = S.off; $("vOff").textContent = S.off + "（約" + (S.off/400).toFixed(1).replace(/\.0$/,"") + "ティア分）";
   $("sT").value = S.wT; $("vT").textContent = S.wT;
   $("sL").value = S.wL; $("vL").textContent = S.wL;
@@ -647,6 +737,7 @@ function renderResult(){
     h += cell(A[k], "a") + `<div class="mid lane">${ROLE_JA[ROLES[k]]}<span class="d ${d>0?"a":d<0?"b":""}">${dtxt}</span></div>` + cell(B[k], "b");
   }
   h += `</div><div class="summary">
+    <span>基準：<b>${modeLabel()}</b></span>
     <span>チーム合計の差：<b>${Math.abs(sumA-sumB)}</b></span>
     <span>レーン対面の差（平均）：<b>${Math.round(s.laneAvg)}</b></span>
     <span>得意ロールからの落差（1人平均）：<b>${Math.round(s.loss)}</b></span>
@@ -660,7 +751,7 @@ function renderResult(){
 function resultText(){
   const {A, B, sumA, sumB} = currentTeams();
   const side = (name, T, sum) => `【${name}】合計 ${sum}\n` + T.map((x,k)=>`${ROLE_JA[ROLES[k]].padEnd(4)} ${x.p.name}（${ratingLabel(x.r, true)}）`).join("\n");
-  return side("チームA", A, sumA) + "\n\n" + side("チームB", B, sumB);
+  return `（${modeLabel()}基準）\n` + side("チームA", A, sumA) + "\n\n" + side("チームB", B, sumB);
 }
 
 /* ---------- 操作 ---------- */
@@ -731,6 +822,24 @@ $("roster").addEventListener("click", async e => {
   });
 });
 $("platform").addEventListener("change", () => { state.platform = $("platform").value; save(); });
+["modeRank","modeNormal"].forEach(id => $(id).addEventListener("click", () => {
+  state.settings.mode = $(id).dataset.mode;
+  save(); renderSettings(); renderSlots(); renderRoster(); clearSolutions();
+}));
+$("btnRefreshAll").addEventListener("click", async () => {
+  const list = slotPlayers();
+  if(!list.length) return;
+  const b = $("btnRefreshAll"); b.disabled = true;
+  let done = 0;
+  for(const p of list){
+    b.textContent = `取り直し中… ${done}/${list.length}`;
+    try{ upsert(await fetchPlayer(p.name, p.tag, p.platform || state.platform), {name:p.name, tag:p.tag}); }catch(e){}
+    done++;
+    save(); renderSlots(); renderRoster();
+  }
+  b.disabled = false; b.textContent = "全員の戦績を取り直す";
+  clearSolutions();
+});
 
 $("btnSolve").addEventListener("click", () => {
   const act = slotPlayers();
@@ -809,6 +918,7 @@ function resultCanvas(){
     y += rowH;
   }
   g.fillStyle = "#2a364d"; g.fillRect(x0, y, W - pad*2, 1);
+  text(`${modeLabel()}基準`, x3, ty, `400 13px ${F}`, "#8c99b3", "right");
   text(`チーム合計の差 ${Math.abs(sumA-sumB)}　／　レーン対面の差（平均） ${Math.round(s.laneAvg)}　／　得意ロールからの落差（1人平均） ${Math.round(s.loss)}　　※100 = 1ディビジョン分`,
        x0, y + footH/2 + 4, `400 13px ${F}`, "#8c99b3");
   return c;
