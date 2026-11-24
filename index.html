@@ -72,7 +72,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .teams .head.b{background:rgba(239,90,90,.16);color:#f6b0b0;flex-direction:row-reverse}
 .teams .head small{font-weight:400;font-size:12px;color:var(--muted)}
 .teams .mid{background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.05em}
-.teams .cell{min-height:58px;background:var(--panel) center 22%/cover no-repeat;padding:9px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.teams .cell{min-height:78px;background:var(--panel) 50% 24%/auto 300% no-repeat;padding:9px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .teams .cell.b{flex-direction:row-reverse;text-align:right}
 .teams .cell .pn{font-weight:700;font-size:15px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
 .teams .cell .pr{display:flex;align-items:center;gap:6px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
@@ -95,9 +95,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .seg button.on{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:700}
 .slots{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(5,auto);grid-auto-flow:column;gap:8px 14px}
 @media(max-width:700px){.slots{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
-.slot{position:relative;display:flex;align-items:center;gap:8px;background:#0b111c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:44px}
+.slot{position:relative;display:flex;align-items:center;gap:8px;background:#0b111c;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:54px}
 .slot:focus-within{border-color:var(--accent)}
-.slot.filled{background:var(--panel2) 62% 22%/56% auto no-repeat;border-color:#3a4a68}
+.slot.filled{background:var(--panel2) 62% 24%/auto 300% no-repeat;border-color:#3a4a68}
 .slot .no{color:var(--muted);font-size:12px;width:18px;text-align:center;flex:none}
 .slot input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none;font-family:inherit}
 .slot .who{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -544,8 +544,9 @@ function squareUrl(cid){ const n = champName(cid); return n && CH.ver ? `${DD}/c
 function topChamp(p, role){ const c = (p && p.champs) || {}; return (role && c[role]) || c.All || 0; }
 function splashBg(cid, dir, strong){
   const u = splashUrl(cid); if(!u) return "";
-  const a = strong ? ".2" : ".5";
-  return `background-image:linear-gradient(${dir}, rgba(22,30,46,${a}) 0%, rgba(22,30,46,.3) 56%, rgba(22,30,46,.93) 80%), url('${u}')`;
+  // 画像は名前側に少し寄せ、両端はセルの地色に溶かす（レート表示側は濃いめ）
+  const pos = dir === "90deg" ? 38 : 62;
+  return `background-position:${pos}% 24%;background-image:linear-gradient(${dir}, rgba(22,30,46,1) 0%, rgba(22,30,46,1) 8%, rgba(22,30,46,.1) 26%, rgba(22,30,46,.1) 52%, rgba(22,30,46,.92) 72%, rgba(22,30,46,1) 100%), url('${u}')`;
 }
 function renderHero(){
   const first = slotPlayers().find(p => topChamp(p));
@@ -697,7 +698,7 @@ function renderSlot(i){
   if(slotBusy[i]) el.innerHTML = no + `<span class="who" style="color:var(--muted);font-weight:400">${esc(slotBusy[i])} を取得中…</span>`;
   else if(p){
     const u = splashUrl(topChamp(p));
-    if(u) el.style.backgroundImage = `linear-gradient(90deg, rgba(28,38,57,1) 28%, rgba(28,38,57,.35) 48%, rgba(28,38,57,.35) 64%, rgba(28,38,57,1) 84%), url('${u}')`;
+    if(u) el.style.backgroundImage = `linear-gradient(90deg, rgba(28,38,57,1) 40%, rgba(28,38,57,.15) 50%, rgba(28,38,57,.15) 66%, rgba(28,38,57,1) 76%), url('${u}')`;
     el.innerHTML = no + `<span class="who">${esc(p.name)} <span class="t">#${esc(p.tag)}</span></span>
     ${p.error ? "" : crestImg(p, baseOf(p), true)}<span class="rk">${p.error ? "データなし" : esc(ratingLabel(baseOf(p)))}</span>
     <button class="mini" data-clear="${i}" title="この枠を空ける">×</button>`;
@@ -1012,7 +1013,7 @@ function loadImg(url){
 }
 async function resultCanvas(){
   const {A, B, sumA, sumB, s} = currentTeams();
-  const W = 1000, pad = 24, titleH = 48, headH = 52, rowH = 64, footH = 46, midW = 96;
+  const W = 1000, pad = 24, titleH = 48, headH = 52, rowH = 78, footH = 46, midW = 96;
   const H = pad + titleH + headH + rowH*5 + footH + pad;
   const sc = 2, c = document.createElement("canvas");
   c.width = W*sc; c.height = H*sc;
@@ -1037,11 +1038,14 @@ async function resultCanvas(){
   // セルいっぱいにスプラッシュを敷き、文字が読めるように片側を暗くする
   const splash = (im, x, y, w, h, toRight) => {
     if(!im) return;
-    const scale = Math.max(w/im.width, h/im.height), sw = w/scale, sh = h/scale;
-    g.drawImage(im, (im.width - sw)/2, (im.height - sh)*0.22, sw, sh, x, y, w, h);
+    const ih = h*3, iw = ih*im.width/im.height;            // 行の高さの3倍で置く＝顔全体が入る引き具合
+    const dx = x + (w - iw)*(toRight ? 0.38 : 0.62), dy = y - (ih - h)*0.24;
+    g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+    g.drawImage(im, dx, dy, iw, ih);
     const gr = g.createLinearGradient(toRight ? x : x + w, 0, toRight ? x + w : x, 0);
-    gr.addColorStop(0, "rgba(22,30,46,.2)"); gr.addColorStop(0.56, "rgba(22,30,46,.3)"); gr.addColorStop(0.8, "rgba(22,30,46,.93)"); gr.addColorStop(1, "rgba(22,30,46,.93)");
+    [[0,1],[0.08,1],[0.26,0.1],[0.52,0.1],[0.72,0.92],[1,1]].forEach(([t, al]) => gr.addColorStop(t, `rgba(22,30,46,${al})`));
     g.fillStyle = gr; g.fillRect(x, y, w, h);
+    g.restore();
   };
   g.fillStyle = "#0e1420"; g.fillRect(0, 0, W, H);
   g.textBaseline = "middle";
