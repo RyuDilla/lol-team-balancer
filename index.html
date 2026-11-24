@@ -247,6 +247,11 @@ async function fetchPlayer(name, tag, platform){
   if(!info || !info.puu_id){ p.error = "DeepLoLで見つかりません（手入力で使えます）"; return p; }
   p.puuid = info.puu_id;
   if(info.riot_id_name){ p.name = info.riot_id_name; p.tag = info.riot_id_tag_line || tag; }
+  // 過去シーズンの最終ランク（参考表示用）
+  p.season = await currentSeason();
+  p.hist = (info.previous_season_tier_list || [])
+    .map(x => ({s:x.season, r:tierToRating(x.tier, x.division, x.lp)}))
+    .filter(x => x.r != null && x.s < p.season);
 
   // ランク：ソロ → フレックス → 前シーズン の順で採用
   try{
@@ -406,6 +411,19 @@ function cellColor(r, base){
 function slotPlayers(){
   return state.slots.map(id => id ? state.players.find(p => p.id === id) : null).filter(Boolean);
 }
+const RECENT_SEASONS = 3;   // 「最近」とみなす過去シーズン数（1シーズン=1年）
+function peakNote(p){
+  if(!p.hist || !p.hist.length) return "";
+  const cur = p.season || 27;
+  const year = s => 2018 + (s - 11) / 2;          // DeepLoLのシーズン番号 → 西暦
+  const best = a => a.reduce((m, x) => (!m || x.r > m.r) ? x : m, null);
+  const rec = best(p.hist.filter(x => (cur - x.s) / 2 <= RECENT_SEASONS));
+  const old = best(p.hist.filter(x => (cur - x.s) / 2 > RECENT_SEASONS));
+  const parts = [];
+  if(rec) parts.push(`<span style="color:var(--accent2)">過去${RECENT_SEASONS}年の最高 ${esc(ratingLabel(rec.r))}（${year(rec.s)}年）</span>`);
+  if(old && (!rec || old.r > rec.r)) parts.push(`それ以前 ${esc(ratingLabel(old.r))}（${year(old.s)}年）`);
+  return parts.length ? `<div class="t" title="各シーズン終了時のランク。シーズン途中の最高到達は記録にありません">${parts.join("／")}</div>` : "";
+}
 function renderRoster(){
   const t = $("roster");
   const n = slotPlayers().length;
@@ -427,6 +445,7 @@ function renderRoster(){
       if(p.base == null && p.baseOverride == null) notes.push(`<div class="w">ランク不明 → 基準ランクを選んでください</div>`);
       else if(p.baseSrc === "prev" && p.baseOverride == null) notes.push(`<div class="w">今期ランクなし（前シーズンを使用）</div>`);
       if(!p.roles) notes.push(`<div class="w">ロール戦績なし → 数字を手で調整してください</div>`);
+      notes.unshift(peakNote(p));
     }
     h += `<tr>
       <td style="color:var(--muted)">${si+1}</td>
