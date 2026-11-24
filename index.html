@@ -427,6 +427,7 @@ const PERMS = (function(){
   })([], [0,1,2,3,4]);
   return out;
 })();
+const PEN_MAIN_TO_SUB = 300, PEN_MAIN_TO_OTHER = 800, PEN_SUB_MISS = 500;
 function solve(players, settings){
   let r = solveCore(players, settings, true);
   if(!r.length && settings.assign === "weak") r = solveCore(players, settings, false);   // サブ禁止までだと組めないときは緩める
@@ -460,17 +461,27 @@ function solveCore(players, settings, strict){
       target[i] = rest[rest.length-1].v;
     }
   });
+  // 狙ったロールから外れた人への減点。レーン対面の均等さより優先させるため、大きめにしてある
+  const MSK = players.map((p, i) => {
+    const ms = mainSub(p), m = ms.main ? ROLES.indexOf(ms.main) : -1, sb = ms.sub ? ROLES.indexOf(ms.sub) : -1;
+    return {m: m >= 0 && R[i][m] != null ? m : -1, s: sb >= 0 && R[i][sb] != null ? sb : -1};
+  });
+  const penOf = (pi, k) => {
+    if(mode === "main") return MSK[pi].m < 0 || k === MSK[pi].m ? 0 : (k === MSK[pi].s ? PEN_MAIN_TO_SUB : PEN_MAIN_TO_OTHER);
+    if(mode === "sub") return want[pi] >= 0 && want[pi] !== k ? PEN_SUB_MISS : 0;
+    return 0;
+  };
   function options(team){
     const opts = [];
     for(const perm of PERMS){
-      const lanes = new Array(5); let sum = 0, loss = 0, fit = 0, ok = true;
+      const lanes = new Array(5); let sum = 0, loss = 0, fit = 0, pen = 0, ok = true;
       for(let k=0;k<5;k++){
         const pi = team[perm[k]], v = R[pi][k];
         if(v == null || forbid[pi] === k || forbid2[pi] === k){ ok = false; break; }
         lanes[k] = v; sum += v; loss += best[pi] - v;
-        fit += Math.abs(target[pi] - v) + (want[pi] >= 0 && want[pi] !== k ? 100 : 0);
+        fit += Math.abs(target[pi] - v); pen += penOf(pi, k);
       }
-      if(ok) opts.push({perm, lanes, sum, loss, fit});
+      if(ok) opts.push({perm, lanes, sum, loss, fit, pen});
     }
     return opts;
   }
@@ -484,7 +495,7 @@ function solveCore(players, settings, strict){
       for(const a of oa) for(const b of ob){
         let lane = 0;
         for(let k=0;k<5;k++) lane += Math.abs(a.lanes[k]-b.lanes[k]);
-        const cost = settings.wT*Math.abs(a.sum-b.sum) + settings.wL*lane/5 + settings.wC*(a.fit+b.fit)/10;
+        const cost = settings.wT*Math.abs(a.sum-b.sum) + settings.wL*lane/5 + settings.wC*((a.fit+b.fit)/10 + a.pen + b.pen);
         if(cost < bestCost){ bestCost = cost; bestPair = [a,b,lane]; }
       }
       if(bestPair){
