@@ -141,7 +141,8 @@ a{color:var(--accent2)}
       <button id="btnPrev" disabled>◀ 前の案</button>
       <button id="btnNext" disabled>次の案 ▶</button>
       <button id="btnSwap" disabled>A/Bを入れ替え</button>
-      <button id="btnCopy" disabled>結果をコピー</button>
+      <button id="btnCopy" disabled>テキストでコピー</button>
+      <button id="btnCopyImg" disabled>画像でコピー</button>
       <span class="status" id="solveStatus"></span>
     </div>
     <div id="result"></div>
@@ -603,7 +604,7 @@ function renderSettings(){
 function clearSolutions(){
   solutions = []; solIdx = 0;
   $("result").innerHTML = ""; $("solveStatus").textContent = "";
-  ["btnPrev","btnNext","btnSwap","btnCopy"].forEach(id => $(id).disabled = true);
+  ["btnPrev","btnNext","btnSwap","btnCopy","btnCopyImg"].forEach(id => $(id).disabled = true);
 }
 function currentTeams(){
   const s = solutions[solIdx];
@@ -635,7 +636,7 @@ function renderResult(){
   $("solveStatus").textContent = `案 ${solIdx+1} / ${solutions.length}（バランスが良い順）`;
   $("btnPrev").disabled = solIdx === 0;
   $("btnNext").disabled = solIdx >= solutions.length-1;
-  $("btnSwap").disabled = false; $("btnCopy").disabled = false;
+  $("btnSwap").disabled = false; $("btnCopy").disabled = false; $("btnCopyImg").disabled = false;
 }
 function resultText(){
   const {A, B, sumA, sumB} = currentTeams();
@@ -730,6 +731,85 @@ $("btnSolve").addEventListener("click", () => {
 $("btnPrev").addEventListener("click", () => { if(solIdx > 0){ solIdx--; renderResult(); } });
 $("btnNext").addEventListener("click", () => { if(solIdx < solutions.length-1){ solIdx++; renderResult(); } });
 $("btnSwap").addEventListener("click", () => { swapped = !swapped; renderResult(); });
+function flash(id, msg){
+  const b = $(id), orig = b.dataset.label || (b.dataset.label = b.textContent);
+  b.textContent = msg;
+  setTimeout(() => b.textContent = orig, 2000);
+}
+/* 結果を1枚の画像（PNG）に描く */
+function resultCanvas(){
+  const {A, B, sumA, sumB, s} = currentTeams();
+  const W = 1000, pad = 24, titleH = 48, headH = 52, rowH = 54, footH = 46, midW = 96;
+  const H = pad + titleH + headH + rowH*5 + footH + pad;
+  const sc = 2, c = document.createElement("canvas");
+  c.width = W*sc; c.height = H*sc;
+  const g = c.getContext("2d"); g.scale(sc, sc);
+  const F = '"Segoe UI","Yu Gothic UI","Meiryo",sans-serif';
+  const colW = (W - pad*2 - midW)/2, x0 = pad, x1 = x0 + colW, x2 = x1 + midW, x3 = W - pad;
+  const text = (t, x, y, font, color, align) => { g.font = font; g.fillStyle = color; g.textAlign = align || "left"; g.fillText(t, x, y); };
+  const fit = (t, font, max) => {
+    g.font = font;
+    if(g.measureText(t).width <= max) return t;
+    while(t.length > 1 && g.measureText(t + "…").width > max) t = t.slice(0, -1);
+    return t + "…";
+  };
+  g.fillStyle = "#0e1420"; g.fillRect(0, 0, W, H);
+  g.textBaseline = "middle";
+  // タイトル
+  const ty = pad + titleH/2 - 6, tf = `700 22px ${F}`;
+  text("LoLカスタム ", x0, ty, tf, "#e6ebf5");
+  text("チーム分け", x0 + g.measureText("LoLカスタム ").width, ty, tf, "#c8a45a");
+  // チーム見出し
+  let y = pad + titleH;
+  g.fillStyle = "#1b2b47"; g.fillRect(x0, y, colW, headH);
+  g.fillStyle = "#1c2639"; g.fillRect(x1, y, midW, headH);
+  g.fillStyle = "#3a2330"; g.fillRect(x2, y, colW, headH);
+  const hy = y + headH/2, sf = `400 13px ${F}`, hf = `700 18px ${F}`;
+  text("チームA", x0+16, hy, hf, "#a9cdfb");
+  text(`合計 ${sumA.toLocaleString()}（平均 ${ratingLabel(sumA/5)}）`, x1-16, hy, sf, "#8c99b3", "right");
+  text("VS", x1 + midW/2, hy, `700 12px ${F}`, "#8c99b3", "center");
+  text("チームB", x3-16, hy, hf, "#f6b0b0", "right");
+  text(`合計 ${sumB.toLocaleString()}（平均 ${ratingLabel(sumB/5)}）`, x2+16, hy, sf, "#8c99b3");
+  y += headH;
+  // 各レーン
+  const nf = `600 17px ${F}`, rf = `400 13px ${F}`;
+  for(let k = 0; k < 5; k++){
+    g.fillStyle = "#161e2e"; g.fillRect(x0, y, W - pad*2, rowH);
+    g.fillStyle = "#1c2639"; g.fillRect(x1, y, midW, rowH);
+    g.fillStyle = "#2a364d"; g.fillRect(x0, y, W - pad*2, 1);
+    const cy = y + rowH/2, a = A[k], b = B[k];
+    const rt = x => `${ratingLabel(x.r, true)}（${x.r}）` + (x.best - x.r >= 150 ? " 不慣れ" : "");
+    const rc = x => x.best - x.r >= 150 ? "#e0a13a" : "#8c99b3";
+    text(fit(a.p.name, nf, colW - 200), x0+16, cy, nf, "#e6ebf5");
+    text(rt(a), x1-16, cy, rf, rc(a), "right");
+    text(fit(b.p.name, nf, colW - 200), x3-16, cy, nf, "#e6ebf5", "right");
+    text(rt(b), x2+16, cy, rf, rc(b));
+    const d = a.r - b.r;
+    text(ROLE_JA[ROLES[k]], x1 + midW/2, cy - 8, `700 13px ${F}`, "#c5cede", "center");
+    text(d === 0 ? "互角" : (d > 0 ? "◀ +" + d : "+" + (-d) + " ▶"), x1 + midW/2, cy + 10, `400 11px ${F}`, d > 0 ? "#4c9bf5" : d < 0 ? "#ef5a5a" : "#8c99b3", "center");
+    y += rowH;
+  }
+  g.fillStyle = "#2a364d"; g.fillRect(x0, y, W - pad*2, 1);
+  text(`チーム合計の差 ${Math.abs(sumA-sumB)}　／　レーン対面の差（平均） ${Math.round(s.laneAvg)}　／　得意ロールからの落差（1人平均） ${Math.round(s.loss)}　　※100 = 1ディビジョン分`,
+       x0, y + footH/2 + 4, `400 13px ${F}`, "#8c99b3");
+  return c;
+}
+$("btnCopyImg").addEventListener("click", () => {
+  if(!solutions.length) return;
+  resultCanvas().toBlob(async blob => {
+    try{
+      await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+      flash("btnCopyImg", "画像をコピーしました");
+    }catch(e){
+      // クリップボードに入れられないブラウザでは、画像ファイルとして保存する
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "team.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      flash("btnCopyImg", "画像を保存しました");
+    }
+  }, "image/png");
+});
 $("btnCopy").addEventListener("click", async () => {
   const text = resultText();
   try{ await navigator.clipboard.writeText(text); }
@@ -737,8 +817,7 @@ $("btnCopy").addEventListener("click", async () => {
     const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
     ta.select(); try{ document.execCommand("copy"); }catch(_){} ta.remove();
   }
-  $("btnCopy").textContent = "コピーしました";
-  setTimeout(() => $("btnCopy").textContent = "結果をコピー", 1500);
+  flash("btnCopy", "コピーしました");
 });
 
 load();
