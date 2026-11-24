@@ -1112,8 +1112,22 @@ $("btnCopy").addEventListener("click", async () => {
   flash("btnCopy", "コピーしました");
 });
 
+/* 旧版で保存したメンバーにはチャンピオン情報が無いので、開いたときに自動で取り直す */
+async function backfillChamps(){
+  const list = slotPlayers().filter(p => !p.champs && !p.error && p.puuid);
+  if(!list.length) return;
+  for(const p of list){
+    setStatus(`チャンピオン画像を準備中…（${p.name}）`);
+    try{ upsert(await fetchPlayer(p.name, p.tag, p.platform || state.platform), {name:p.name, tag:p.tag}); }catch(e){}
+    const q = state.players.find(x => x.id === p.id);
+    if(q && !q.champs) q.champs = {};          // 取れなかった人を毎回取り直さない
+    save(); renderSlots(); renderRoster();
+  }
+  setStatus("");
+}
 load();
 loadChampions();
+backfillChamps();
 $("platform").value = state.platform;
 renderSettings(); renderSlots(); renderRoster();
 </script>
